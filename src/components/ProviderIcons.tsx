@@ -7,6 +7,18 @@ export interface IconProps {
   className?: string;
 }
 
+export function HuggingFaceMark({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" className={cn("fill-[#FFD21E]", className)}>
+      <path d="M37.5 51.5c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 15c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5zM82.5 51.5c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 15c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/>
+      <path d="M60 10C32.4 10 10 32.4 10 60s22.4 50 50 50 50-22.4 50-50S87.6 10 60 10zm0 90c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z"/>
+      <path d="M60 75c-11 0-20 6-20 15h5c0-5.5 6.7-10 15-10s15 4.5 15 10h5c0-9-9-15-20-15z"/>
+      <circle cx="37.5" cy="61.5" r="3"/>
+      <circle cx="82.5" cy="61.5" r="3"/>
+    </svg>
+  );
+}
+
 export function GrokMark({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={cn("fill-[#F5F5F5]", className)}>
@@ -38,6 +50,8 @@ export function ComputerMark({ size = 16, className }: IconProps) {
 
 export function ProviderMark({ driverKind, size, className }: IconProps & { driverKind: string }) {
   switch (driverKind) {
+    case "huggingface":
+      return <HuggingFaceMark size={size} className={className} />;
     case "grok":
       return <GrokMark size={size} className={className} />;
     case "claudeAgent":

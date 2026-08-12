@@ -1,8 +1,7 @@
-// Grok driver — xAI chat-completions API with SSE streaming. Unlike the
-// CLI drivers this one is transcript-replay: the server hands it the
-// folded thread history each turn (SendTurnInput.transcript) and it emits
-// true token-level content.delta events. Also supplies the instance's
-// generateText (bot titles, thread names) — upstream's TextGeneration slot.
+// Hugging Face driver — OpenAI-compatible chat/completions API with SSE streaming.
+// Uses Hugging Face Inference Providers (router.huggingface.co) by default,
+// supporting open-source models like Llama, Mistral, Qwen, and more.
+// EU-pinnable: operators can point the base URL at dedicated inference endpoints.
 import type {
   DriverCreateInput,
   ProviderDriver,
@@ -15,42 +14,59 @@ import type {
 import { newEventId, newId } from "../contracts.ts";
 import { appendNative } from "./native.ts";
 
-const DRIVER_KIND = "grok";
-const DEFAULT_URL = "https://api.x.ai/v1";
+const DRIVER_KIND = "huggingface";
+const DEFAULT_URL = "https://router.huggingface.co/v1";
 
+// Curated open-source models available on Hugging Face Inference Providers.
+// These are chat-capable instruction models that work with the OpenAI-compatible API.
+// Operators can also point at custom endpoints with other models.
 const MODELS = {
-  default: "grok-4",
+  default: "meta-llama/Llama-3.3-70B-Instruct",
   options: [
-    { id: "grok-4", label: "Grok 4" },
-    { id: "grok-4-fast", label: "Grok 4 Fast" },
-    { id: "grok-3-mini", label: "Grok 3 Mini" },
+    { id: "meta-llama/Llama-3.3-70B-Instruct", label: "Llama 3.3 70B" },
+    { id: "meta-llama/Llama-3.1-8B-Instruct", label: "Llama 3.1 8B" },
+    { id: "Qwen/Qwen2.5-72B-Instruct", label: "Qwen 2.5 72B" },
+    { id: "Qwen/Qwen2.5-7B-Instruct", label: "Qwen 2.5 7B" },
+    { id: "mistralai/Mistral-7B-Instruct-v0.3", label: "Mistral 7B v0.3" },
+    { id: "mistralai/Mixtral-8x7B-Instruct-v0.1", label: "Mixtral 8x7B" },
+    { id: "google/gemma-2-27b-it", label: "Gemma 2 27B" },
+    { id: "google/gemma-2-9b-it", label: "Gemma 2 9B" },
+    { id: "microsoft/Phi-3.5-mini-instruct", label: "Phi 3.5 Mini" },
   ],
 };
 
-export interface GrokConfig {
+export interface HuggingFaceConfig {
   url: string;
   /** resolved at create-time from instance environment / app config */
   apiKeyEnv: string;
 }
 
-function decodeConfig(raw: unknown): GrokConfig {
+function decodeConfig(raw: unknown): HuggingFaceConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
     url: typeof o.url === "string" ? o.url : DEFAULT_URL,
-    apiKeyEnv: typeof o.apiKeyEnv === "string" ? o.apiKeyEnv : "XAI_API_KEY",
+    apiKeyEnv: typeof o.apiKeyEnv === "string" ? o.apiKeyEnv : "HF_TOKEN",
   };
 }
 
-export const GrokDriver: ProviderDriver<GrokConfig> = {
+export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
   driverKind: DRIVER_KIND,
-  metadata: { displayName: "Grok", supportsMultipleInstances: true },
+  metadata: { displayName: "Hugging Face", supportsMultipleInstances: true },
   models: MODELS,
   decodeConfig,
   defaultConfig: () => decodeConfig({}),
 
-  async create(input: DriverCreateInput<GrokConfig>): Promise<ProviderInstance> {
+  async create(input: DriverCreateInput<HuggingFaceConfig>): Promise<ProviderInstance> {
     const { instanceId, config } = input;
-    const apiKey = input.environment[config.apiKeyEnv] ?? process.env[config.apiKeyEnv] ?? "";
+    // Check both the configured env var name AND common alternatives
+    const apiKey =
+      input.environment[config.apiKeyEnv] ??
+      process.env[config.apiKeyEnv] ??
+      input.environment.HF_TOKEN ??
+      process.env.HF_TOKEN ??
+      input.environment.HUGGINGFACE_TOKEN ??
+      process.env.HUGGINGFACE_TOKEN ??
+      "";
     const listeners = new Set<RuntimeEventListener>();
     const active = new Map<string, { abort: AbortController; turnId: string }>();
 
@@ -72,13 +88,21 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
     ): Promise<{ text: string; usage: { input: number; output: number } | null }> => {
       const res = await fetch(`${config.url}/chat/completions`, {
         method: "POST",
-        headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-        body: JSON.stringify({ model, messages, stream: opts.stream }),
-        signal: opts.signal ?? AbortSignal.timeout(120_000),
+        headers: {
+          authorization: `Bearer ${apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: opts.stream,
+          max_tokens: 4096,
+        }),
+        signal: opts.signal ?? AbortSignal.timeout(180_000), // Longer timeout for large models
       });
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        throw new Error(`xAI HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
+        throw new Error(`Hugging Face HTTP ${res.status}${body ? `: ${body.slice(0, 200)}` : ""}`);
       }
       if (!opts.stream) {
         const json: any = await res.json();
@@ -126,7 +150,7 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
 
     const sendTurn = async (turn: SendTurnInput) => {
       const { threadId } = turn;
-      if (!apiKey) throw new Error(`no xAI key — set ${config.apiKeyEnv} or config.json xai.key`);
+      if (!apiKey) throw new Error(`no Hugging Face token — set HF_TOKEN or add hf.key to config.json`);
       if (active.has(threadId)) throw new Error("a turn is already running on this thread");
       const turnId = newId();
       const abort = new AbortController();
@@ -140,7 +164,7 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
         })),
         { role: "user", content: turn.text },
       ];
-      appendNative(threadId, { dir: "out", source: "xai.chat.completions", msg: { model: turn.model, messages } });
+      appendNative(threadId, { dir: "out", source: "hf.chat.completions", msg: { model: turn.model, messages } });
 
       emit({ ...base(threadId, turnId), type: "turn.started" });
       emit({ ...base(threadId, turnId), type: "session.started", sessionId: null, model: turn.model ?? MODELS.default });
@@ -153,7 +177,7 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
             onDelta: (delta) =>
               emit({ ...base(threadId, turnId), type: "content.delta", streamKind: "assistant_text", delta }),
           });
-          appendNative(threadId, { dir: "in", source: "xai.chat.completions", msg: { text, usage } });
+          appendNative(threadId, { dir: "in", source: "hf.chat.completions", msg: { text, usage } });
           if (text.trim()) {
             emit({ ...base(threadId, turnId), type: "item.completed", itemType: "assistant_text", text });
           }
@@ -185,7 +209,7 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
       if (!apiKey) {
         return {
           state: "unavailable",
-          reason: `no xAI API key — add {"xai":{"key":"xai-…"}} to config.json or set ${config.apiKeyEnv}`,
+          reason: `no Hugging Face token — add {"hf":{"key":"hf_…"}} to ~/.config/workspacealberta/config.json or set HF_TOKEN`,
         };
       }
       return { state: "available", authenticated: true, version: null };
@@ -204,7 +228,7 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.abort.abort(),
         respondToRequest: async () => {
-          throw new Error("grok driver has no pending asks");
+          throw new Error("huggingface driver has no pending asks");
         },
         hasSession: (threadId) => active.has(threadId),
         stopAll: async () => {
@@ -216,7 +240,12 @@ export const GrokDriver: ProviderDriver<GrokConfig> = {
         },
       },
       generateText: async (prompt: string) => {
-        const { text } = await complete([{ role: "user", content: prompt }], "grok-3-mini", { stream: false });
+        // Use a smaller model for quick text generation tasks
+        const { text } = await complete(
+          [{ role: "user", content: prompt }],
+          "meta-llama/Llama-3.1-8B-Instruct",
+          { stream: false },
+        );
         return text;
       },
       dispose: async () => {

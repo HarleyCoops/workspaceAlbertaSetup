@@ -1,22 +1,32 @@
 @import "tailwindcss";
 
-/* Grok Bot dark palette (pixel-sampled from the real app) */
+/* WorkspaceAlberta dark pine + prairie amber palette
+ * - Base: deep dark pine (#071417-ish), a slight blue-green tint
+ * - Accent: prairie amber/orange (#d97706) replacing the original Telegram blue
+ * - Text: warm cream (#f5e6d3) for better contrast against the pine base */
 @theme {
   --animate-panel-in: panel-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-pop-in: pop-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 
-  --color-app: #070707;
-  --color-panel: #111111;
-  --color-raised: #2f2f2f;
-  --color-raised-hover: #3d3d3d;
-  --color-card: #262626;
-  --color-inset: #191919;
-  --color-hairline: #333333;
-  --color-ink: #fcfcfc;
-  --color-ink-secondary: #fcfcfc99;
-  --color-accent: #1084fe;
-  --color-accent-border: #459ffe;
-  --color-bubble-user: #5a5a5a;
+  /* Dark pine base tones */
+  --color-app: #071417;
+  --color-panel: #0d1f22;
+  --color-raised: #1a3338;
+  --color-raised-hover: #254347;
+  --color-card: #142528;
+  --color-inset: #0a1a1d;
+  --color-hairline: #2a4448;
+
+  /* Warm cream text */
+  --color-ink: #f5e6d3;
+  --color-ink-secondary: #f5e6d399;
+
+  /* Prairie amber accent */
+  --color-accent: #d97706;
+  --color-accent-border: #f59e0b;
+  --color-bubble-user: #92400e;
+
+  /* Status colors */
   --color-success: #38d591;
   --color-danger: #ff5667;
   --color-warning: #ff9800;
@@ -46,7 +56,7 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3d3d3d;
+  background: #254347;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {

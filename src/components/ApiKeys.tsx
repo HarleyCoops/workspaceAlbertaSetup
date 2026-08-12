@@ -1,17 +1,19 @@
 // Paste-a-key rows for PUT /api/config. The server persists to
-// ~/.openmausbot/config.json and hot-reloads the provider fleet; secrets
-// are write-only — GET /api/config returns configured flags, never values.
+// ~/.config/workspacealberta/config.json and hot-reloads the provider fleet;
+// secrets are write-only — GET /api/config returns configured flags, never values.
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
 
-export type ConfigSection = "composio" | "composioApi" | "box";
+export type ConfigSection = "hf" | "hfUrl" | "composio" | "composioApi" | "box";
 
 const SECTIONS: Record<
   ConfigSection,
   { body: (value: string) => unknown; flag: (config: ConfigStatus) => boolean }
 > = {
+  hf: { body: (v) => ({ hf: { key: v } }), flag: (c) => c.hf?.configured ?? false },
+  hfUrl: { body: (v) => ({ hf: { url: v } }), flag: () => true },
   composio: { body: (v) => ({ composio: { key: v } }), flag: (c) => c.composio.configured },
   composioApi: {
     body: (v) => ({ composio: { apiKey: v } }),
@@ -24,11 +26,13 @@ export function ApiKeyRow({
   section,
   label,
   placeholder,
+  type = "password",
   onSaved,
 }: {
   section: ConfigSection;
   label: string;
   placeholder: string;
+  type?: "password" | "text";
   /** Called after a successful save with the section's new configured flag. */
   onSaved?: (configured: boolean) => void;
 }) {
@@ -66,7 +70,7 @@ export function ApiKeyRow({
       </div>
       <div className="flex gap-2">
         <input
-          type="password"
+          type={type}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && save()}

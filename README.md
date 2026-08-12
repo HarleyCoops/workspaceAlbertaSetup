@@ -1,168 +1,73 @@
 <div align="center">
 
-# OpenMausBot
+# WorkspaceAlberta
 
-**Your own team of AI bots, in a chat app.**
+**Linux-first CEO productivity chat app with AI bots**
 
-Every bot in the sidebar is a real agent — Claude or Codex running locally under the hood — with its own
-personality, its own model, its own cloud computer, and its own connected apps.
-Talk to them like contacts. Watch them work. Approve what matters.
+A team of AI bots in a messaging interface, powered by open-source models from Hugging Face.
+Built for Raspberry Pi desk terminals and Linux workstations.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Electron](https://img.shields.io/badge/Electron-macOS-2B2E3A?logo=electron&logoColor=9FEAF9)
-![Agents](https://img.shields.io/badge/agents-Claude%20·%20Codex-d97757)
-![PRs](https://img.shields.io/badge/PRs-welcome-38d591)
+![Electron](https://img.shields.io/badge/Electron-Linux%20%7C%20macOS-2B2E3A?logo=electron&logoColor=9FEAF9)
+![HuggingFace](https://img.shields.io/badge/Hugging%20Face-Open%20Source-FFD21E?logo=huggingface&logoColor=black)
+![License](https://img.shields.io/badge/License-MIT-38d591)
 
 <br>
-
-<a href="https://github.com/milind-soni/openmausbot-releases/releases/latest">
-  <img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20%20Download%20for%20macOS-.dmg-1084fe?style=for-the-badge&labelColor=070707" alt="Download OpenMausBot for macOS" height="40">
-</a>
-
-<sub>Apple silicon · signed & notarized · [all releases](https://github.com/milind-soni/openmausbot-releases/releases)</sub>
-
-<br>
-<br>
-
-<img src="docs/screenshots/hero.png" alt="OpenMausBot — a Telegram-style chat app where every chat is a real AI agent" width="900">
 
 </div>
 
 ---
 
-## Why
+## What is WorkspaceAlberta?
 
-One assistant in one box is the wrong shape for agents. OpenMausBot treats AI as a *messaging app*: a roster
-of bots you chat with — each with its own personality, memory of its thread, model, computer, and apps — built
-on the agents you already have:
+WorkspaceAlberta is a **Telegram-style chat app where every contact is an AI agent**. Each bot in your
+sidebar has its own personality, model, and optional cloud computer. Talk to them like messaging
+contacts, watch them work, approve what matters.
 
-- **Bring your own agents.** Bots run on the `claude` and `codex` CLIs installed on your Mac — your existing
-  logins and subscriptions, no new accounts, no proxy in the middle.
-- **Local first.** One small harness server on `127.0.0.1` owns every agent process. Transcripts, keys, and
-  events live in `~/.openmausbot`, not a cloud.
-- **Agents with hands.** Each bot can get a real computer — a cloud Linux desktop it drives while you watch
-  live, or your own Mac — plus 500+ apps through Composio Connect.
+**Key differences from other AI chat apps:**
 
-## Features
+- **Open-source models first** — Powered by Hugging Face Inference Providers (Llama, Mistral, Qwen, etc.)
+  with EU-pinnable endpoints. No vendor lock-in.
+- **Linux-first** — Primary target is Raspberry Pi 5 16GB desk terminals and Linux workstations.
+  macOS support included but secondary.
+- **Local harness** — One small server on `127.0.0.1` runs all agent processes. Your transcripts,
+  keys, and events stay in `~/.config/workspacealberta`, not a cloud.
+- **Multiple bots** — Not one assistant, but a team: create bots for different roles, each with
+  their own model and personality.
 
-<table>
-<tr>
-<td width="50%" valign="top">
+## Quick Start
 
-### 🧠 Pick a brain per bot
+### On Raspberry Pi / Ubuntu Desktop
 
-A model picker with a provider rail — Claude and Codex models side by side, defaults marked, unavailable
-providers dimmed with the reason. Switch a bot's model mid-conversation.
-
-<img src="docs/screenshots/model-picker.png" alt="Model picker with provider rail" width="100%">
-
-</td>
-<td width="50%" valign="top">
-
-### 🖥️ Every bot gets a computer
-
-Open the Computer panel and the bot's cloud desktop spins up on its own — live screen preview while it
-works, "Open desktop" to take over in your browser, or point the bot at *this Mac* instead.
-
-<img src="docs/screenshots/computer-panel.png" alt="Computer panel with live screen preview" width="100%">
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 🙋 Bots ask before they act
-
-Shell commands, file edits, and questions surface as inline cards — Allow / Deny / answer in chat. A
-permission broker turns every risky action into a decision you make, for cloud and local computers alike.
-
-<img src="docs/screenshots/approval-card.png" alt="Approval and question cards in chat" width="100%">
-
-</td>
-<td width="50%" valign="top">
-
-### 🔌 Connected apps
-
-A one-click marketplace over Composio Connect: Gmail, Slack, GitHub, Notion, Linear and hundreds more.
-OAuth once, and every bot can use them as tools.
-
-<img src="docs/screenshots/marketplace.png" alt="Connected apps marketplace" width="100%">
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### 🗂 Manage bots like chats
-
-Right-click any bot: pin, mark unread, edit profile, duplicate, copy conversation ID, hide, delete. It's a
-messaging app — your agents behave like contacts.
-
-<img src="docs/screenshots/context-menu.png" alt="Bot context menu" width="100%">
-
-</td>
-<td width="50%" valign="top">
-
-### 🔑 Keys once, everything lights up
-
-Paste credentials in App Settings — they persist locally and the provider fleet hot-reloads instantly.
-Secrets are write-only: the UI only ever sees "configured" flags.
-
-<img src="docs/screenshots/app-settings.png" alt="App-level settings with API keys" width="100%">
-
-</td>
-</tr>
-</table>
-
-**Also in the box:** streaming replies with tool-run activity chips · native macOS dictation from the
-composer mic (on-device Apple speech recognition — desktop app) · SupaMaus cursor mascots with role-aware
-expressions · screenshots of the bot's work folded into the transcript.
-
-## How it works
-
-Two processes. The app holds no transports of its own — it sends typed commands over HTTP and folds one SSE
-event stream into state. The harness server owns every agent process and normalizes each provider's native
-protocol into one canonical runtime event stream (logged per-thread as NDJSON).
-
-```mermaid
-flowchart LR
-    subgraph app ["App — React + Tailwind (5199)"]
-        UI[Chat UI · model picker · computer panel]
-    end
-    subgraph server ["Harness server (127.0.0.1:8799)"]
-        REG[Driver registry] --> BUS[Event bus → SSE]
-        BROKER[Permission broker]
-    end
-    subgraph agents ["Agents on your Mac"]
-        CL[claude CLI]
-        CX[codex CLI]
-    end
-    UI -- "HTTP commands" --> server
-    BUS -- "one SSE stream" --> UI
-    REG --> CL & CX
-    CL & CX -- "MCP" --> BROKER
-    server -- "Box API" --> BOX[("Cloud computer<br/>box.ascii.dev")]
-    server -- "Composio Connect" --> APPS[("Gmail · Slack · GitHub · …")]
-```
-
-| Layer | Where | What it does |
-|---|---|---|
-| Drivers | `server/drivers/` | One per provider: Claude and Codex over their local CLIs (stream-JSON / JSON-RPC), plus a cloud-computer agent. Unknown drivers degrade to "unavailable", never crash the fleet. |
-| Harness | `server/harness/` | Registry (configs → live instances) and the fan-in event bus every client folds. |
-| API | `server/index.ts` | Bots, turns, approvals, model catalog, computer lifecycle, connectors, config — HTTP + SSE. |
-| App | `src/` | The chat shell. Server-backed store, one reducer, zero client-side transports. |
-| Desktop | `electron/` | macOS shell: dictation helper (SFSpeechRecognizer), local screen capture, CUA bridge. |
-
-## Quick start
-
-**Easiest:** [download the latest .dmg](https://github.com/milind-soni/openmausbot-releases/releases/latest),
-drag it to Applications, open it. The harness server is embedded — no setup.
-
-**From source:**
+**1. Download the `.deb` package:**
 
 ```sh
-git clone https://github.com/milind-soni/OpenMausBot && cd OpenMausBot
+# For Raspberry Pi 5 (arm64)
+wget https://github.com/HarleyCoops/openmausbot/releases/latest/download/workspacealberta_*_arm64.deb
+
+# For x64 Linux
+wget https://github.com/HarleyCoops/openmausbot/releases/latest/download/workspacealberta_*_amd64.deb
+```
+
+**2. Install:**
+
+```sh
+sudo dpkg -i workspacealberta_*.deb
+sudo apt-get install -f  # Fix any missing dependencies
+```
+
+**3. Launch WorkspaceAlberta** from your applications menu.
+
+**4. Configure Hugging Face:**
+
+Open **App Settings** (gear icon in sidebar) and paste your [HF token](https://huggingface.co/settings/tokens).
+That's it — your bots now run on open-source models.
+
+### From Source
+
+```sh
+git clone https://github.com/HarleyCoops/openmausbot && cd openmausbot
 pnpm install
 
 pnpm dev:server    # harness server → 127.0.0.1:8799
@@ -170,28 +75,144 @@ pnpm dev           # app → http://127.0.0.1:5199
 pnpm dev:desktop   # or the Electron shell
 ```
 
-Requirements: **macOS**, **Node 24+**, **pnpm**, and at least one agent CLI — [`claude`](https://claude.com/claude-code)
-or [`codex`](https://github.com/openai/codex) — installed and logged in. They appear in the model picker
-automatically.
+Requirements: **Node 20+**, **pnpm**
 
-Optional, pasted once in **App Settings** (gear in the sidebar footer):
-
-| Key | Unlocks |
-|---|---|
-| Composio Connect key (`ck_…`) | The connected-apps marketplace |
-| Composio API key (`ak_…`) | The full 500+ app catalog with official logos |
-| Box token ([box.ascii.dev](https://box.ascii.dev)) | Cloud computers for your bots |
+### Building Packages
 
 ```sh
-pnpm typecheck     # app + server
-pnpm build         # typecheck + production build
+pnpm typecheck     # Verify TypeScript
+pnpm build         # Build UI + server
+
+# Linux packages
+pnpm package:linux          # AppImage + deb for x64
+pnpm package:linux:arm64    # AppImage + deb for arm64 (Pi)
+pnpm package:pi             # Just the arm64 deb
+
+# macOS (requires macOS + Xcode)
+pnpm package:mac
 ```
 
-## Status
+## Configuration
 
-Early but real — the loop works end to end: message → agent → streamed reply → tools → approvals →
-computer use. Rough edges to expect: routines (scheduled tasks) are a placeholder, sidebar sections aren't
-built yet, and Windows/Linux shells haven't been attempted (the harness itself is portable Node).
+### Hugging Face (Default Provider)
 
-Contributions welcome — the driver SPI in [`server/contracts.ts`](server/contracts.ts) is deliberately
-small; adding a provider is one file in [`server/drivers/`](server/drivers/) plus a one-line registration.
+WorkspaceAlberta uses Hugging Face Inference Providers as the default AI backend:
+
+1. Get a token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. Paste it in App Settings → "Hugging Face token"
+3. Start chatting
+
+**Custom endpoints:** For EU compliance or dedicated inference, set a custom base URL:
+- App Settings → "Hugging Face base URL"
+- Or `HF_BASE_URL` environment variable
+
+### Optional: CLI Agents
+
+Power users can also enable Claude Code and Codex CLIs:
+
+| Provider | Install | Notes |
+|----------|---------|-------|
+| Claude Code | `npm i -g @anthropic-ai/claude-code` | Run `claude` once to sign in |
+| Codex | `npm i -g @openai/codex` | OpenAI Codex CLI |
+
+These appear automatically in the model picker when installed.
+
+### Optional: Connected Apps
+
+Paste credentials in **App Settings** to unlock additional features:
+
+| Key | Unlocks |
+|-----|---------|
+| Composio Connect key (`ck_…`) | Gmail, Slack, GitHub, and 500+ app integrations |
+| Box token | Cloud computers for your bots |
+
+## System Requirements
+
+### Raspberry Pi (Primary Target)
+
+- **Raspberry Pi 5** with 8GB or 16GB RAM (16GB recommended)
+- **Ubuntu Desktop 24.04 LTS** (arm64) or Raspberry Pi OS (64-bit)
+- Active internet connection for Hugging Face API
+
+### Linux Desktop
+
+- **Ubuntu 22.04+**, Debian 12+, or equivalent
+- 4GB RAM minimum (8GB+ recommended)
+- x64 or arm64 architecture
+
+### macOS (Secondary)
+
+- macOS 12+ (Monterey or later)
+- Apple Silicon or Intel
+
+## Architecture
+
+WorkspaceAlberta is two processes:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Electron / Browser UI (React + Tailwind)                       │
+│  - Chat interface, model picker, computer panel                 │
+│  - Dispatches commands over HTTP                                │
+│  - Folds one SSE event stream into state                        │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTP + SSE
+┌───────────────────────────▼─────────────────────────────────────┐
+│  Harness Server (127.0.0.1:8799)                                │
+│  - Driver registry: HF, Claude CLI, Codex CLI, Box              │
+│  - Event bus normalizes all provider protocols                  │
+│  - Permission broker for tool approvals                         │
+│  - Transcript storage in ~/.config/workspacealberta             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Adding a Provider
+
+The driver SPI is intentionally small. Adding a provider:
+
+1. Create `server/drivers/<name>.ts` (see `grok.ts` or `huggingface.ts` as examples)
+2. Register in `server/drivers/builtIn.ts`
+3. Add icon in `src/components/ProviderIcons.tsx`
+
+## Data Storage
+
+| Platform | Location |
+|----------|----------|
+| Linux | `~/.config/workspacealberta/` (XDG) or `~/.workspacealberta/` |
+| macOS | `~/.workspacealberta/` |
+
+Contents:
+- `config.json` — API keys (write-only, never echoed to UI)
+- `bots.json` — Bot records and resume cursors
+- `messages-<threadId>.json` — Transcripts per thread
+- `events/` — Raw provider event logs (NDJSON)
+
+## Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `HF_TOKEN` | Hugging Face API token | — |
+| `HF_BASE_URL` | Custom HF inference endpoint | `https://router.huggingface.co/v1` |
+| `WA_PORT` | Server port | `8799` |
+| `WA_ANALYTICS` | Opt-in to telemetry (`1` to enable) | disabled |
+| `BOX_TOKEN` | Box cloud computer token | — |
+| `COMPOSIO_KEY` | Composio Connect key | — |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+Based on [OpenMausBot](https://github.com/milind-soni/OpenMausBot) by Milind Soni.
+
+## Contributing
+
+Contributions welcome! The driver SPI in [`server/contracts.ts`](server/contracts.ts) is
+deliberately small. See the existing drivers in [`server/drivers/`](server/drivers/) for examples.
+
+---
+
+<div align="center">
+
+**WorkspaceAlberta** — AI bots for operators, powered by open-source models.
+
+</div>

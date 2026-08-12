@@ -1,4 +1,4 @@
-// OpenMausBot server — the harness host. Clients hold no transports
+// WorkspaceAlberta server — the harness host. Clients hold no transports
 // (upstream rule): the React app dispatches typed commands over HTTP and
 // folds one SSE event stream; every provider process runs here.
 import { readFileSync, unlinkSync } from "node:fs";
@@ -16,7 +16,7 @@ import { EventBus } from "./harness/bus.ts";
 import { ProviderRegistry } from "./harness/registry.ts";
 import { Store, type Message } from "./store.ts";
 
-const PORT = Number(process.env.OMB_PORT || process.env.OGB_PORT || 8799);
+const PORT = Number(process.env.WA_PORT || process.env.OMB_PORT || process.env.OGB_PORT || 8799);
 const STATIC_DIR = process.env.OMB_STATIC_DIR || null;
 const MIME: Record<string, string> = {
   ".html": "text/html",
@@ -37,14 +37,19 @@ await registry.load(instanceConfigs(cfg));
 const bus = new EventBus();
 bus.attach(registry.instances());
 
-// default selection for new bots: first available instance, claude preferred
+// default selection for new bots: first available instance, HF preferred for WorkspaceAlberta
 async function defaultSelection() {
   const described = await registry.describe();
   const available = described.filter((d) => d.snapshot.state === "available");
-  const pick = available.find((d) => d.driverKind === "claudeAgent") ?? available[0] ?? described[0];
-  return { instanceId: pick?.instanceId ?? "claude", model: pick?.models.default || "claude-sonnet-5" };
+  // Prefer Hugging Face (WorkspaceAlberta default), then Claude, then first available
+  const pick =
+    available.find((d) => d.driverKind === "huggingface") ??
+    available.find((d) => d.driverKind === "claudeAgent") ??
+    available[0] ??
+    described[0];
+  return { instanceId: pick?.instanceId ?? "huggingface", model: pick?.models.default || "meta-llama/Llama-3.3-70B-Instruct" };
 }
-let bootSelection = { instanceId: "claude", model: "claude-sonnet-5" };
+let bootSelection = { instanceId: "huggingface", model: "meta-llama/Llama-3.3-70B-Instruct" };
 const store = new Store(() => bootSelection);
 bootSelection = await defaultSelection();
 store.seedIfEmpty();
@@ -199,14 +204,41 @@ function stopScreenPoller(botId: string): Frame | null {
   return entry.last;
 }
 
-// Local computer-use contract written by Electron main on startup
-// (~/Library/Application Support/OpenMausBot/cua-connection.json). Read
-// fresh each turn — Electron may restart or permissions may change.
+// Local computer-use contract written by Electron main on startup.
+// Platform-aware paths:
+// - macOS: ~/Library/Application Support/WorkspaceAlberta/cua-connection.json
+// - Linux: ~/.config/workspacealberta/cua-connection.json (XDG)
+// Read fresh each turn — Electron may restart or permissions may change.
 function readCuaConnection(): { command: string; args: string[]; env: Record<string, string> } | null {
-  // new name first; pre-rename desktop builds used the old directory
-  for (const dir of ["OpenMausBot", "openmausbot", "OpenGrokBot", "opengrokbot"]) {
+  const isMac = process.platform === "darwin";
+  const isLinux = process.platform === "linux";
+
+  // Build list of directories to search (current name first, then legacy)
+  const searchDirs: string[] = [];
+
+  if (isMac) {
+    const appSupport = join(homedir(), "Library", "Application Support");
+    searchDirs.push(
+      join(appSupport, "WorkspaceAlberta"),
+      join(appSupport, "OpenMausBot"),
+      join(appSupport, "openmausbot"),
+      join(appSupport, "OpenGrokBot"),
+      join(appSupport, "opengrokbot"),
+    );
+  } else if (isLinux) {
+    const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+    searchDirs.push(
+      join(xdgConfig, "workspacealberta"),
+      join(xdgConfig, "WorkspaceAlberta"),
+      join(homedir(), ".workspacealberta"),
+      join(xdgConfig, "openmausbot"),
+      join(homedir(), ".openmausbot"),
+    );
+  }
+
+  for (const dir of searchDirs) {
     try {
-      const p = join(homedir(), "Library", "Application Support", dir, "cua-connection.json");
+      const p = join(dir, "cua-connection.json");
       const conn = JSON.parse(readFileSync(p, "utf8"));
       if (!conn || conn.mode === "unavailable" || !conn.mcpCommand) continue;
       return { command: conn.mcpCommand, args: conn.mcpArgs ?? ["mcp"], env: conn.mcpEnv ?? {} };
@@ -242,7 +274,7 @@ async function startTurn(botId: string, text: string) {
     .map((m) => ({ role: m.role === "user" ? ("user" as const) : ("assistant" as const), text: m.text! }));
 
   const persona = [
-    `You are ${bot.name}, a personal bot in OpenMausBot.`,
+    `You are ${bot.name}, a personal bot in WorkspaceAlberta.`,
     bot.title && `Role: ${bot.title}.`,
     bot.description && `About: ${bot.description}`,
   ]
@@ -311,6 +343,7 @@ async function startTurn(botId: string, text: string) {
 // ── config hot-reload ─────────────────────────────────────────────────
 function configStatus() {
   return {
+    hf: { configured: Boolean(cfg.hf?.key) },
     xai: { configured: Boolean(cfg.xai?.key) },
     composio: { configured: Boolean(cfg.composio?.key), apiKeyConfigured: Boolean(cfg.composio?.apiKey) },
     box: { configured: Boolean(cfg.box?.token) },
@@ -469,7 +502,7 @@ const server = createServer(async (req, res) => {
     // child proves it is OURS by echoing its pid (a stray dev server has
     // the same API shape but a different pid)
     if (method === "GET" && path === "/api/health") {
-      return json(res, 200, { app: "openmausbot", pid: process.pid, static: Boolean(STATIC_DIR) });
+      return json(res, 200, { app: "workspacealberta", pid: process.pid, static: Boolean(STATIC_DIR) });
     }
 
     // ── provider instances (model picker) ──
@@ -484,7 +517,7 @@ const server = createServer(async (req, res) => {
     if ((method === "PUT" || method === "PATCH") && path === "/api/config") {
       const body = await readBody(req);
       const patch: Record<string, object> = {};
-      for (const key of ["xai", "composio", "box"] as const) {
+      for (const key of ["hf", "xai", "composio", "box"] as const) {
         if (body[key] && typeof body[key] === "object") patch[key] = body[key];
       }
       if (!Object.keys(patch).length) return json(res, 400, { error: "nothing to save" });
@@ -565,7 +598,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`openmausbot server on http://127.0.0.1:${PORT}`);
+  console.log(`workspacealberta server on http://127.0.0.1:${PORT}`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
