@@ -65,6 +65,7 @@ All configuration is through environment variables. All are optional with sensib
 | `INSTALL_TAILSCALE` | `1` | Install and configure Tailscale |
 | `INSTALL_WA_CHAT_APP` | `1` | Install WorkspaceAlberta chat app from releases |
 | `INSTALL_HERMES_APPLIANCE` | `0` | Also run the Hermes appliance installer (from separate repo) |
+| `INSTALL_OPENCODE2_LAYOUT` | `1` | Install OpenCode2 always-on dual-display layout |
 | `CLONE_REPO` | `1` | Clone workspaceAlbertaSetup to ~/workspaceAlbertaSetup |
 | `SKIP_APT_UPGRADE` | `0` | Skip apt full-upgrade for faster re-runs |
 
@@ -173,6 +174,19 @@ pnpm package:pi
 
 Skip with `INSTALL_WA_CHAT_APP=0`.
 
+### OpenCode2 always-on layout
+
+Installs a dual-monitor Bloomberg-style layout for always-on OpenCode2 operation:
+
+- Copies configs to `~/.config/opencode/`
+- Installs tmux layout to `~/.tmux/wa-terminal.conf`
+- Installs systemd user units for automatic restart
+- Enables user lingering for service persistence
+
+The layout uses `opencode2` (V2 CLI with managed background service). See `opencode2-layout/README.md` for details.
+
+Skip with `INSTALL_OPENCODE2_LAYOUT=0`.
+
 ### Hermes appliance (optional)
 
 Set `INSTALL_HERMES_APPLIANCE=1` to also clone and run the Hermes installer from the separate `HarleyCoops/WorkspaceAlberta` repository. This adds the branded dashboard, procurement MCP agents, local API gateway, and kiosk autostart.
@@ -212,6 +226,21 @@ opencode
 
 Follow the provider authentication flow.
 
+### 4a. Start OpenCode2 terminal layout (if installed)
+
+```bash
+~/workspaceAlbertaSetup/opencode2-layout/scripts/start-wa-terminal.sh
+```
+
+This starts the dual-monitor Bloomberg-style layout with `opencode2`. Detach with `Ctrl+A d`.
+
+Or start via systemd:
+
+```bash
+systemctl --user start opencode2-wa
+systemctl --user start wa-terminal-tmux
+```
+
 ### 5. Configure WorkspaceAlberta Chat App
 
 Launch WorkspaceAlberta from the applications menu:
@@ -250,6 +279,11 @@ op --version
 codex --version
 opencode --version
 dpkg -l | grep chatgpt
+
+# OpenCode2 layout (if installed)
+ls ~/.config/opencode/opencode.json
+tmux list-sessions | grep wa-terminal
+systemctl --user is-enabled opencode2-wa wa-terminal-tmux
 
 # WorkspaceAlberta chat app
 dpkg -l | grep workspacealberta
@@ -300,6 +334,8 @@ For provisioning batches, use short-lived reusable Tailscale auth keys and revok
 
 - [pi-out-of-box-setup.md](pi-out-of-box-setup.md) — Complete beginner's guide
 - [tailscale-pi-remote-support.md](tailscale-pi-remote-support.md) — Tailscale remote support runbook
+- [opencode2-layout/README.md](../opencode2-layout/README.md) — OpenCode2 always-on layout guide
+- [opencode2-layout/LAYOUT.md](../opencode2-layout/LAYOUT.md) — Dual-screen pane map
 
 ### In separate repo (HarleyCoops/WorkspaceAlberta)
 

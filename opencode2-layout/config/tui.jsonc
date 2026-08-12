@@ -1,0 +1,39 @@
+{
+  "$schema": "https://opencode.ai/tui.json",
+
+  // WorkspaceAlberta CEO Terminal — TUI Configuration
+  // Minimal theme for always-on Bloomberg-style display
+
+  "theme": "workspace-alberta",
+
+  // Attention settings — conservative for production
+  "attention": {
+    "sound": false,
+    "notification": true
+  },
+
+  // Session naming
+  "session": {
+    "prefix": "wa",
+    "auto_name": true
+  },
+
+  // Layout preferences
+  "layout": {
+    "sidebar": true,
+    "status_bar": true,
+    "message_timestamps": true
+  },
+
+  // Keybinds (defaults + custom)
+  "keybinds": {
+    "new_session": "ctrl+x n",
+    "list_sessions": "ctrl+x l",
+    "compact_context": "ctrl+x c",
+    "agent_list": "ctrl+x a",
+    "cycle_agents": "tab",
+    "cycle_models": "ctrl+t",
+    "command_palette": "ctrl+p",
+    "quit": "ctrl+q"
+  }
+}
