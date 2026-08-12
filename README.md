@@ -29,6 +29,7 @@ This repository is the **setup home** for WorkspaceAlberta CEO productivity term
 | **Beginner's Pi guide** | [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md) |
 | **Installer reference** | [`docs/ceo-pi-setup.md`](docs/ceo-pi-setup.md) |
 | **Remote support runbook** | [`docs/tailscale-pi-remote-support.md`](docs/tailscale-pi-remote-support.md) |
+| **Handheld companion** | [`docs/handheld-companion.md`](docs/handheld-companion.md) |
 | **Linux chat app source** | This repo (React + Electron) |
 
 **Related:** The procurement MCP product (CanadaBuys agents, Hermes appliance) lives in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta).

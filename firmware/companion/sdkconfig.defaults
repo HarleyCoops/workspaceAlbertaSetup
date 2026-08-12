@@ -1,0 +1,20 @@
+# WorkspaceAlberta Handheld Companion - Default Config
+# Target: ESP32-S3 with PSRAM
+
+CONFIG_IDF_TARGET="esp32s3"
+
+# PSRAM
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+
+# WiFi
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64
+
+# Partition table
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# LVGL (placeholder - configure via menuconfig)
+# CONFIG_LV_USE_LOG=y
