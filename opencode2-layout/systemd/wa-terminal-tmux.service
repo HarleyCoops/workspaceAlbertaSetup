@@ -1,0 +1,31 @@
+# ============================================================================
+# WorkspaceAlberta tmux Session — systemd user unit
+# ============================================================================
+# Restores the wa-terminal tmux session on login/boot.
+# Install to: ~/.config/systemd/user/wa-terminal-tmux.service
+#
+# Enable: systemctl --user enable wa-terminal-tmux
+# Start:  systemctl --user start wa-terminal-tmux
+# Status: systemctl --user status wa-terminal-tmux
+# ============================================================================
+
+[Unit]
+Description=WorkspaceAlberta Terminal tmux Session
+Documentation=man:tmux(1)
+After=opencode2-wa.service
+Wants=opencode2-wa.service
+
+[Service]
+Type=forking
+ExecStartPre=/bin/bash -c 'command -v tmux || { echo "tmux not found"; exit 1; }'
+ExecStart=/bin/bash -c 'tmux has-session -t wa-terminal 2>/dev/null || tmux -f %h/.tmux/wa-terminal.conf new-session -d -s wa-terminal'
+ExecStop=/bin/bash -c 'tmux kill-session -t wa-terminal 2>/dev/null || true'
+RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
+
+# Environment
+EnvironmentFile=-%h/.config/environment.d/opencode2.conf
+
+[Install]
+WantedBy=default.target

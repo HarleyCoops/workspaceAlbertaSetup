@@ -1,0 +1,35 @@
+# ============================================================================
+# WorkspaceAlberta OpenCode2 Service — systemd user unit
+# ============================================================================
+# Keeps the opencode2 managed background service running.
+# Install to: ~/.config/systemd/user/opencode2-wa.service
+#
+# Enable: systemctl --user enable opencode2-wa
+# Start:  systemctl --user start opencode2-wa
+# Status: systemctl --user status opencode2-wa
+# ============================================================================
+
+[Unit]
+Description=WorkspaceAlberta OpenCode2 Background Service
+Documentation=https://opencode.ai/docs
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash -c 'command -v opencode2 || { echo "opencode2 not found"; exit 1; }'
+ExecStart=/bin/bash -c 'opencode2 service start && sleep infinity'
+ExecStop=/bin/bash -c 'opencode2 service stop'
+Restart=on-failure
+RestartSec=10
+
+# Environment — load from user environment files
+EnvironmentFile=-%h/.config/environment.d/opencode2.conf
+EnvironmentFile=-%h/.bashrc.d/opencode2.env
+
+# Resource limits
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

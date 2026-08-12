@@ -31,6 +31,7 @@ INSTALL_CODEX_CLI="${INSTALL_CODEX_CLI:-1}"
 INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-1}"
 INSTALL_WA_CHAT_APP="${INSTALL_WA_CHAT_APP:-1}"
 INSTALL_HERMES_APPLIANCE="${INSTALL_HERMES_APPLIANCE:-0}"
+INSTALL_OPENCODE2_LAYOUT="${INSTALL_OPENCODE2_LAYOUT:-1}"
 CLONE_REPO="${CLONE_REPO:-1}"
 SKIP_APT_UPGRADE="${SKIP_APT_UPGRADE:-0}"
 
@@ -365,6 +366,43 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# OpenCode2 Always-On Layout (optional)
+# Dual-monitor Bloomberg-style terminal with managed service and systemd units.
+# See opencode2-layout/README.md for details.
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_OPENCODE2_LAYOUT" = "1" ]; then
+  log "Installing OpenCode2 always-on layout"
+
+  # Check if opencode2 is available
+  if require_command opencode2; then
+    log "opencode2 (V2) found"
+  elif require_command opencode; then
+    warn "opencode (V1) found but opencode2 (V2) recommended for managed service"
+    warn "The layout will work but service commands may not be available"
+  else
+    warn "Neither opencode nor opencode2 found — layout may not work correctly"
+  fi
+
+  # Run the layout installer if repo is present
+  LAYOUT_INSTALLER="$REPO_DIR/opencode2-layout/scripts/install-layout.sh"
+  if [ -x "$LAYOUT_INSTALLER" ]; then
+    log "Running OpenCode2 layout installer"
+    bash "$LAYOUT_INSTALLER" || warn "OpenCode2 layout installation had errors"
+  elif [ -f "$LAYOUT_INSTALLER" ]; then
+    chmod +x "$LAYOUT_INSTALLER"
+    log "Running OpenCode2 layout installer"
+    bash "$LAYOUT_INSTALLER" || warn "OpenCode2 layout installation had errors"
+  else
+    warn "OpenCode2 layout installer not found at: $LAYOUT_INSTALLER"
+    warn "Manual installation: see $REPO_DIR/opencode2-layout/README.md"
+  fi
+else
+  log "Skipping OpenCode2 layout installation (INSTALL_OPENCODE2_LAYOUT=0)"
+  log "Note: To install the always-on dual-display layout later, run:"
+  log "  bash $REPO_DIR/opencode2-layout/scripts/install-layout.sh"
+fi
+
+# -----------------------------------------------------------------------------
 # Clone workspaceAlbertaSetup repo
 # -----------------------------------------------------------------------------
 REPO_DIR="$HOME/workspaceAlbertaSetup"
@@ -548,6 +586,17 @@ if [ "$INSTALL_OPENCODE" = "1" ]; then
   fi
 else
   echo "OpenCode:       skipped"
+fi
+
+# OpenCode2 Layout
+if [ "$INSTALL_OPENCODE2_LAYOUT" = "1" ]; then
+  if [ -f "$HOME/.config/opencode/opencode.json" ]; then
+    echo "OpenCode2 Layout: installed"
+  else
+    echo "OpenCode2 Layout: config not found (run install-layout.sh manually)"
+  fi
+else
+  echo "OpenCode2 Layout: skipped"
 fi
 
 # WorkspaceAlberta Chat App

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // WorkspaceAlberta CEO Terminal — OpenCode2 Configuration
+  // Use with opencode2 (V2 managed service)
+
+  "model": "deepseek/deepseek-chat",
+  "small_model": "deepseek/deepseek-chat",
+  "default_agent": "procurement",
+
+  "autoupdate": "notify",
+
+  // Server configuration for opencode2 managed service
+  // The V2 service manages the server lifecycle automatically
+  "server": {
+    "port": 4096,
+    "hostname": "127.0.0.1",
+    "mdns": false
+  },
+
+  // Provider configuration
+  "provider": {
+    "deepseek": {
+      "options": {
+        "timeout": 600000,
+        "chunkTimeout": 30000,
+        "apiKey": "{env:DEEPSEEK_API_KEY}"
+      }
+    },
+    "openai": {
+      "options": {
+        "timeout": 600000,
+        "apiKey": "{env:OPENAI_API_KEY}"
+      }
+    }
+  },
+
+  // MCP servers for WorkspaceAlberta procurement
+  "mcp": {
+    // CanadaBuys procurement MCP — requires ~/WorkspaceAlberta clone
+    "buildcanada": {
+      "type": "local",
+      "command": ["python3", "~/WorkspaceAlberta/mcp-servers/canadabuys/server.py"],
+      "enabled": true,
+      "timeout": 15000
+    },
+    // GitHub MCP for PR/issue management
+    "github": {
+      "type": "remote",
+      "url": "https://api.github.com/mcp",
+      "enabled": true,
+      "oauth": {}
+    },
+    // HuggingFace MCP (optional, for model/dataset ops)
+    "huggingface": {
+      "type": "remote",
+      "url": "https://huggingface.co/api/mcp",
+      "enabled": false,
+      "oauth": {
+        "scope": "inference-api read-repos"
+      }
+    },
+    // Cloudflare docs for reference
+    "cloudflare-docs": {
+      "type": "remote",
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "enabled": true,
+      "timeout": 15000
+    }
+  },
+
+  // Permission rules — conservative defaults for production terminal
+  "permission": {
+    "*": "ask",
+    "bash": {
+      "*": "ask",
+      "git status *": "allow",
+      "git log *": "allow",
+      "git diff *": "allow",
+      "git branch *": "allow",
+      "grep *": "allow",
+      "ls *": "allow",
+      "cd *": "allow",
+      "pwd *": "allow",
+      "which *": "allow",
+      "python3 *": "allow",
+      "pip *": "ask",
+      "apt *": "deny",
+      "sudo *": "deny",
+      "rm -rf *": "deny",
+      "git push --force *": "deny",
+      "git push *": "ask",
+      "git commit *": "ask"
+    },
+    "edit": {
+      "*": "ask",
+      "*.env": "deny",
+      "*.env.*": "deny"
+    },
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
+    "webfetch": "ask",
+    "external_directory": {
+      "~/WorkspaceAlberta/**": "allow",
+      "~/workspaceAlbertaSetup/**": "allow",
+      "~/**": "deny"
+    },
+    "doom_loop": "ask",
+    "question": "allow"
+  },
+
+  // Context compaction for long sessions
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+
+  // File watcher ignores
+  "watcher": {
+    "ignore": [
+      "node_modules/**",
+      ".git/**",
+      "__pycache__/**",
+      "*.pyc",
+      ".venv/**",
+      "venv/**",
+      "dist/**",
+      "build/**",
+      "logs/**",
+      "*.log"
+    ]
+  },
+
+  "lsp": true,
+
+  // Agent definitions
+  "agent": {
+    "procurement": {
+      "mode": "primary",
+      "model": "deepseek/deepseek-chat",
+      "color": "#2E8B57",
+      "description": "Primary agent for WorkspaceAlberta procurement work: CanadaBuys discovery, bid analysis, MCP tools.",
+      "prompt": "{file:~/.config/opencode/agents/procurement.md}",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "review": "allow",
+          "general": "allow",
+          "explore": "allow"
+        }
+      },
+      "steps": 40
+    },
+
+    "review": {
+      "mode": "subagent",
+      "model": "deepseek/deepseek-chat",
+      "color": "#DAA520",
+      "description": "Read-only review agent for procurement logic, MCP behavior, and documentation.",
+      "prompt": "{file:~/.config/opencode/agents/review.md}",
+      "hidden": false,
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "grep *": "allow",
+          "git status *": "allow",
+          "git log *": "allow",
+          "git diff *": "allow"
+        }
+      },
+      "steps": 20
+    }
+  },
+
+  // Custom commands
+  "command": {
+    "smoke": {
+      "description": "Run the CanadaBuys MCP smoke test.",
+      "template": "Run `python3 -m unittest tests.test_canadabuys_mcp_smoke` in ~/WorkspaceAlberta and summarize the result.",
+      "agent": "procurement"
+    },
+    "health": {
+      "description": "Check opencode2 service health.",
+      "template": "Run `opencode2 service status` and `opencode2 api get /api/health` to verify the service is healthy.",
+      "agent": "procurement"
+    },
+    "opportunities": {
+      "description": "Search for new CanadaBuys opportunities.",
+      "template": "Use the buildcanada MCP to search for recent opportunities matching Alberta procurement interests. Summarize findings.",
+      "agent": "procurement"
+    }
+  },
+
+  // Instruction files to load
+  "instructions": [
+    "~/.config/opencode/AGENTS.md",
+    "~/WorkspaceAlberta/AGENTS.md"
+  ],
+
+  // Session snapshots for recovery
+  "snapshot": true,
+
+  // Subagent nesting depth
+  "subagent_depth": 2
+}
