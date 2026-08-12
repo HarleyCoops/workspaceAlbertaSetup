@@ -25,6 +25,9 @@ WorkspaceAlberta is a **Telegram-style chat app where every contact is an AI age
 sidebar has its own personality, model, and optional cloud computer. Talk to them like messaging
 contacts, watch them work, approve what matters.
 
+> **Naming note:** The *product* users interact with is called **WorkspaceAlberta**. This repository
+> (`workspaceAlbertaSetup`) contains the setup, packaging, and build infrastructure for the app.
+
 **Key differences from other AI chat apps:**
 
 - **Open-source models first** — Powered by Hugging Face Inference Providers (Llama, Mistral, Qwen, etc.)
@@ -44,10 +47,10 @@ contacts, watch them work, approve what matters.
 
 ```sh
 # For Raspberry Pi 5 (arm64)
-wget https://github.com/HarleyCoops/openmausbot/releases/latest/download/workspacealberta_*_arm64.deb
+wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_*_arm64.deb
 
 # For x64 Linux
-wget https://github.com/HarleyCoops/openmausbot/releases/latest/download/workspacealberta_*_amd64.deb
+wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_*_amd64.deb
 ```
 
 **2. Install:**
@@ -67,7 +70,7 @@ That's it — your bots now run on open-source models.
 ### From Source
 
 ```sh
-git clone https://github.com/HarleyCoops/openmausbot && cd openmausbot
+git clone https://github.com/HarleyCoops/workspaceAlbertaSetup && cd workspaceAlbertaSetup
 pnpm install
 
 pnpm dev:server    # harness server → 127.0.0.1:8799
