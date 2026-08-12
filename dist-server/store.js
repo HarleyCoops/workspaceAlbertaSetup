@@ -137,6 +137,6 @@ export class Store {
         if (this.bots.length)
             return;
         const bot = this.createBot();
-        this.patchBot(bot.id, { name: "Milind", color: "blue" });
+        this.patchBot(bot.id, { name: "Alberta", color: "orange" });
     }
 }

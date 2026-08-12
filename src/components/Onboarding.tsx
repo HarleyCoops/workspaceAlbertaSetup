@@ -87,11 +87,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       <div className="flex w-[460px] flex-col rounded-2xl border border-hairline/40 bg-panel p-8">
         {step === 0 && (
           <div className="flex flex-col items-center">
-            <MausAvatar color="green" expression="friendly" size={72} />
-            <h1 className="mt-4 text-[20px] font-semibold text-ink">Welcome to OpenMausBot</h1>
+            <MausAvatar color="orange" expression="friendly" size={72} />
+            <h1 className="mt-4 text-[20px] font-semibold text-ink">Welcome to WorkspaceAlberta</h1>
             <p className="mt-1.5 text-center text-[14px] leading-relaxed text-ink-secondary">
-              Bots that do real work on their own computer. Drop your email and
-              we&rsquo;ll let you know when big things ship.
+              AI bots that do real work — powered by open-source models from Hugging Face.
+              Drop your email to stay in the loop.
             </p>
             <input
               autoFocus
@@ -126,9 +126,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
         {step === 1 && (
           <div className="flex flex-col">
-            <h1 className="text-[18px] font-semibold text-ink">Your engines</h1>
+            <h1 className="text-[18px] font-semibold text-ink">Your AI Engines</h1>
             <p className="mt-1 text-[13.5px] text-ink-secondary">
-              Bots run on the AI tools already on this Mac — here&rsquo;s what we found.
+              WorkspaceAlberta uses Hugging Face open-source models by default. Paste your
+              HF token in App Settings to get started. CLI agents (Claude, Codex) are optional.
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
               {!instances ? (
@@ -138,20 +139,30 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               ) : (
                 <>
                   <StatusRow
-                    ok={claude?.snapshot.state === "available"}
+                    ok={byKind("huggingface")?.snapshot.state === "available"}
                     warn
+                    title="Hugging Face"
+                    detail={
+                      byKind("huggingface")?.snapshot.state === "available"
+                        ? "Ready — open-source models from Hugging Face Inference."
+                        : "Add your HF token in App Settings to enable."
+                    }
+                  />
+                  <StatusRow
+                    ok={claude?.snapshot.state === "available"}
+                    warn={false}
                     title={`Claude Code ${claude?.snapshot.version ? `· ${claude.snapshot.version.split(" ")[0]}` : ""}`}
                     detail={
                       claude?.snapshot.state === "available"
                         ? claude.snapshot.authenticated
                           ? "Installed and signed in — ready to power bots."
                           : "Installed. Run `claude` once in a terminal to sign in."
-                        : "Not found. Install: npm i -g @anthropic-ai/claude-code"
+                        : "Optional. Install: npm i -g @anthropic-ai/claude-code"
                     }
                   />
                   <StatusRow
                     ok={codex?.snapshot.state === "available"}
-                    warn
+                    warn={false}
                     title={`Codex ${codex?.snapshot.version ? `· ${codex.snapshot.version.replace("codex-cli ", "")}` : ""}`}
                     detail={
                       codex?.snapshot.state === "available"
@@ -214,7 +225,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   <div>
                     <div className="text-[14px] font-medium text-ink">Screen preview</div>
                     <div className="mt-0.5 text-[12.5px] text-ink-secondary">
-                      Shows this Mac&rsquo;s screen in the Computer panel when a bot works locally.
+                      Shows your screen in the Computer panel when a bot works locally.
                     </div>
                   </div>
                 </div>
@@ -244,7 +255,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               </div>
             </div>
             <button onClick={finish} className="mt-5 w-full rounded-lg bg-accent py-2.5 text-[15px] font-medium text-white">
-              Start using OpenMausBot
+              Start using WorkspaceAlberta
             </button>
             <button onClick={finish} className="mt-3 text-[12px] text-ink-secondary hover:text-ink">
               Skip for now

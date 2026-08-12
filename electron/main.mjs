@@ -1,5 +1,6 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, systemPreferences, utilityProcess } from "electron";
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startCua, stopCua, registerCuaIpc } from "./cua.mjs";
@@ -11,6 +12,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEV_URL = process.env.ELECTRON_START_URL ?? "http://127.0.0.1:5199";
 let SERVER_PORT = 8799;
 const APP_ICON = path.join(__dirname, "resources/app-icon.png");
+
+// Platform detection
+const isMac = process.platform === "darwin";
+const isLinux = process.platform === "linux";
 
 // Packaged: the harness server ships in Resources (compiled JS, zero deps)
 // and runs on Electron's own Node via utilityProcess. It serves the built
@@ -25,6 +30,9 @@ async function startServerOn(port) {
   const proc = utilityProcess.fork(entry, [], {
     env: {
       ...process.env,
+      WA_STATIC_DIR: path.join(process.resourcesPath, "ui"),
+      WA_PORT: String(port),
+      // Legacy compat — keep OMB_* for any code that still checks it
       OMB_STATIC_DIR: path.join(process.resourcesPath, "ui"),
       OMB_PORT: String(port),
     },
@@ -44,6 +52,8 @@ async function startServerOn(port) {
       const res = await fetch(`http://127.0.0.1:${port}/api/health`);
       if (res.ok) {
         const body = await res.json().catch(() => null);
+        if (body?.app === "workspacealberta" && body.pid === proc.pid && body.static) return proc;
+        // Legacy check for older servers during transition
         if (body?.app === "openmausbot" && body.pid === proc.pid && body.static) return proc;
         break; // someone else owns this port — try the next one
       }
@@ -75,27 +85,37 @@ async function startServerPackaged() {
   return false;
 }
 
+// Platform-aware error message
 const ERROR_PAGE =
   "data:text/html;charset=utf-8," +
   encodeURIComponent(
-    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#070707;color:#fcfcfc;font:15px -apple-system,system-ui"><div style="text-align:center;max-width:360px"><div style="font-size:40px">🐭</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#fcfcfc99;line-height:1.5">Something else is using its ports. Quit and reopen OpenMausBot — if it keeps happening, restart your Mac.</p></div></body>`,
+    `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#071417;color:#f5e6d3;font:15px -apple-system,system-ui,sans-serif"><div style="text-align:center;max-width:360px"><div style="font-size:40px">⚡</div><h2 style="font-weight:600;margin:12px 0 6px">Couldn't start the bot server</h2><p style="color:#f5e6d399;line-height:1.5">Something else is using its ports. Quit and reopen WorkspaceAlberta — if it keeps happening, restart your ${isMac ? "Mac" : "computer"}.</p></div></body>`,
   );
 
 function createWindow() {
-  const win = new BrowserWindow({
+  const windowOptions = {
     width: 1440,
     height: 920,
     minWidth: 900,
     minHeight: 600,
     icon: APP_ICON,
-    backgroundColor: "#070707",
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 16, y: 16 },
+    backgroundColor: "#071417",
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
     },
-  });
+  };
+
+  // macOS-specific window chrome
+  if (isMac) {
+    windowOptions.titleBarStyle = "hiddenInset";
+    windowOptions.trafficLightPosition = { x: 16, y: 16 };
+  } else {
+    // Linux: use default frame (better compatibility with different DEs)
+    windowOptions.frame = true;
+  }
+
+  const win = new BrowserWindow(windowOptions);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -109,7 +129,7 @@ function createWindow() {
   }
 }
 
-// "This Mac" screen preview — served from the main process so the Screen
+// "This Mac/Linux" screen preview — served from the main process so the Screen
 // Recording permission prompt attributes to the app, never the server
 ipcMain.handle("screen:frame", async () => {
   const sources = await desktopCapturer.getSources({
@@ -122,59 +142,86 @@ ipcMain.handle("screen:frame", async () => {
 // Onboarding permission checks. Status reads are free; the mic request
 // pops the real TCC prompt attributed to the app. Screen Recording has no
 // programmatic request — the first desktopCapturer call prompts.
-ipcMain.handle("perm:status", () => ({
-  mic: systemPreferences.getMediaAccessStatus?.("microphone") ?? "unknown",
-  screen: systemPreferences.getMediaAccessStatus?.("screen") ?? "unknown",
-}));
-ipcMain.handle("perm:request-mic", async () => {
-  try {
-    return await systemPreferences.askForMediaAccess("microphone");
-  } catch {
-    return false;
+// NOTE: These TCC APIs are macOS-only. Linux reports "granted" or "unknown"
+// as appropriate since there's no system-level TCC equivalent.
+ipcMain.handle("perm:status", () => {
+  if (isMac) {
+    return {
+      mic: systemPreferences.getMediaAccessStatus?.("microphone") ?? "unknown",
+      screen: systemPreferences.getMediaAccessStatus?.("screen") ?? "unknown",
+    };
   }
+  // Linux: assume granted (no TCC equivalent; permissions handled at app install)
+  return { mic: "granted", screen: "granted" };
 });
-// Screen Recording: an app only APPEARS in the Settings pane after TCC
-// registers a capture attempt, and Electron's thumbnail API doesn't always
-// register one on newer macOS. A child `screencapture` probe inherits the
-// app's TCC identity — it registers OpenMausBot in the pane and triggers
-// the system dialog on first use.
+
+ipcMain.handle("perm:request-mic", async () => {
+  if (isMac) {
+    try {
+      return await systemPreferences.askForMediaAccess("microphone");
+    } catch {
+      return false;
+    }
+  }
+  // Linux: no TCC prompt; assume access is available
+  return true;
+});
+
+// Screen Recording: macOS-only TCC handling via perm-helper
 const PERM_HELPER = app.isPackaged
   ? path.join(process.resourcesPath, "perm-helper")
   : path.join(__dirname, "resources", "perm-helper");
+
 ipcMain.handle("perm:request-screen", async () => {
-  // CGRequestScreenCaptureAccess via the helper — registers the app in the
-  // pane and shows the system dialog; child inherits the app's TCC identity
-  await new Promise((resolve) => {
-    execFile(PERM_HELPER, ["request"], { timeout: 15_000 }, () => resolve());
-  });
-  return systemPreferences.getMediaAccessStatus?.("screen") ?? "unknown";
+  if (isMac && existsSync(PERM_HELPER)) {
+    // CGRequestScreenCaptureAccess via the helper — registers the app in the
+    // pane and shows the system dialog; child inherits the app's TCC identity
+    await new Promise((resolve) => {
+      execFile(PERM_HELPER, ["request"], { timeout: 15_000 }, () => resolve());
+    });
+    return systemPreferences.getMediaAccessStatus?.("screen") ?? "unknown";
+  }
+  // Linux: no TCC; screen recording available if the compositor supports it
+  return "granted";
 });
 
 // macOS never re-prompts a denied permission — the only path is System
 // Settings; deep-link straight to the right privacy pane.
+// Linux: open generic settings (varies by DE)
 ipcMain.handle("perm:open-settings", (_event, pane) => {
-  const panes = {
-    mic: "Privacy_Microphone",
-    screen: "Privacy_ScreenCapture",
-    speech: "Privacy_SpeechRecognition",
-  };
-  return shell.openExternal(
-    `x-apple.systempreferences:com.apple.preference.security?${panes[pane] ?? "Privacy"}`,
-  );
+  if (isMac) {
+    const panes = {
+      mic: "Privacy_Microphone",
+      screen: "Privacy_ScreenCapture",
+      speech: "Privacy_SpeechRecognition",
+    };
+    return shell.openExternal(
+      `x-apple.systempreferences:com.apple.preference.security?${panes[pane] ?? "Privacy"}`,
+    );
+  }
+  // Linux: try common settings apps (best effort)
+  if (isLinux) {
+    // Most DEs: try to open the generic settings
+    return shell.openExternal("x-settings://");
+  }
 });
 
+// Speech recognition is macOS-only (uses Apple's SFSpeechRecognizer)
 ipcMain.handle("speech:start", (event) => {
+  if (!isMac) return; // No-op on Linux
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) startSpeech(win);
 });
-ipcMain.handle("speech:stop", () => stopSpeech());
+ipcMain.handle("speech:stop", () => {
+  if (!isMac) return; // No-op on Linux
+  stopSpeech();
+});
 
 app.whenReady().then(async () => {
-  if (process.platform === "darwin") app.dock.setIcon(APP_ICON);
-  // getDisplayMedia in the renderer → this handler → ScreenCaptureKit, all
-  // inside the app's own processes — the one capture path macOS reliably
-  // attributes to the app (registers it in the Screen Recording pane and
-  // prompts). Used by the onboarding "Enable screen preview" button.
+  if (isMac) app.dock?.setIcon(APP_ICON);
+
+  // getDisplayMedia in the renderer → this handler → ScreenCaptureKit (macOS)
+  // or PipeWire (Linux), all inside the app's own processes
   session.defaultSession.setDisplayMediaRequestHandler(
     (_request, callback) => {
       desktopCapturer
@@ -184,20 +231,26 @@ app.whenReady().then(async () => {
     },
     { useSystemPicker: false },
   );
+
   registerCuaIpc();
+
   // Start the CUA daemon before the window so the harness can pick up the
   // connection descriptor on first render. Never blocks window creation on
   // failure — computer use degrades to "unavailable", the rest still works.
   startCua().catch((e) => console.error("[cua] start failed:", e));
+
   if (app.isPackaged) serverReady = await startServerPackaged();
   createWindow();
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // On macOS, apps typically stay open until explicitly quit
+  // On Linux, close when all windows are closed
+  if (!isMac) app.quit();
 });
 
 // EMBEDDING.md lifecycle rule: defer the first quit until the embedded

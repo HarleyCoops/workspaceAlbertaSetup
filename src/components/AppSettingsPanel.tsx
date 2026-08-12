@@ -22,11 +22,36 @@ export function AppSettingsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
+        {/* Hugging Face — Primary provider for WorkspaceAlberta */}
         <div className="mt-2 rounded-xl bg-card p-4">
-          <div className="text-[15px] font-medium text-ink">Connections</div>
+          <div className="text-[15px] font-medium text-ink">Hugging Face</div>
           <div className="mt-0.5 text-[13px] text-ink-secondary">
-            Shared by all bots. Saving a key reloads providers instantly; keys are stored locally and never
-            shown again.
+            Open-source models from Hugging Face Inference Providers. Get your token at{" "}
+            <a
+              href="https://huggingface.co/settings/tokens"
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent underline"
+            >
+              huggingface.co/settings/tokens
+            </a>
+          </div>
+          <div className="mt-4 flex flex-col gap-4">
+            <ApiKeyRow section="hf" label="Hugging Face token" placeholder="hf_…" />
+            <ApiKeyRow
+              section="hfUrl"
+              label="Base URL (optional)"
+              placeholder="https://router.huggingface.co/v1"
+              type="text"
+            />
+          </div>
+        </div>
+
+        {/* Other connections */}
+        <div className="mt-4 rounded-xl bg-card p-4">
+          <div className="text-[15px] font-medium text-ink">Connected Apps</div>
+          <div className="mt-0.5 text-[13px] text-ink-secondary">
+            Optional integrations. Keys are stored locally and never shown again.
           </div>
           <div className="mt-4 flex flex-col gap-4">
             <ApiKeyRow section="composio" label="Composio Connect key" placeholder="ck_…" />
@@ -36,6 +61,25 @@ export function AppSettingsPanel() {
               placeholder="ak_…  unlocks the full app catalog"
             />
             <ApiKeyRow section="box" label="Box token" placeholder="Token from box.ascii.dev" />
+          </div>
+        </div>
+
+        {/* About */}
+        <div className="mt-4 rounded-xl bg-card p-4">
+          <div className="text-[15px] font-medium text-ink">About WorkspaceAlberta</div>
+          <div className="mt-2 text-[13px] text-ink-secondary leading-relaxed">
+            Linux-first CEO productivity chat app with AI bots powered by open-source models.
+            <br /><br />
+            Based on{" "}
+            <a
+              href="https://github.com/milind-soni/OpenMausBot"
+              target="_blank"
+              rel="noreferrer"
+              className="text-accent underline"
+            >
+              OpenMausBot
+            </a>{" "}
+            by Milind Soni. Licensed under MIT.
           </div>
         </div>
       </div>

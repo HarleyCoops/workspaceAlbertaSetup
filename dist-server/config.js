@@ -1,22 +1,47 @@
-// Config + data dirs. One file, ~/.openmausbot/config.json, env fallbacks:
-//   { "xai": {"key":"xai-…"}, "composio": {"key":"ck_…"}, "box": {"token":"…"},
-//     "instances": { "<instanceId>": {"driver":"grok", …} } }
+// Config + data dirs. One file, ~/.workspacealberta/config.json, env fallbacks:
+//   { "hf": {"key":"hf_…"}, "xai": {"key":"xai-…"}, "composio": {"key":"ck_…"}, "box": {"token":"…"},
+//     "instances": { "<instanceId>": {"driver":"huggingface", …} } }
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, platform } from "node:os";
 import { join } from "node:path";
-export const DATA_DIR = join(homedir(), ".openmausbot");
-const LEGACY_DATA_DIR = join(homedir(), ".opengrokbot");
+// Platform-aware data directory:
+// - Linux: ~/.config/workspacealberta (XDG) or ~/.workspacealberta
+// - macOS: ~/.workspacealberta (simpler, no Library paths needed for harness)
+function resolveDataDir() {
+    const isLinux = platform() === "linux";
+    if (isLinux) {
+        const xdgConfig = process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+        return join(xdgConfig, "workspacealberta");
+    }
+    return join(homedir(), ".workspacealberta");
+}
+export const DATA_DIR = resolveDataDir();
+// Legacy directories to migrate from (in priority order)
+const LEGACY_DATA_DIRS = [
+    join(homedir(), ".openmausbot"),
+    join(homedir(), ".opengrokbot"),
+    // On Linux, also check old non-XDG location if we're now using XDG
+    ...(platform() === "linux" && process.env.XDG_CONFIG_HOME
+        ? [join(homedir(), ".workspacealberta")]
+        : []),
+];
 export const EVENTS_DIR = join(DATA_DIR, "events");
 export const NATIVE_DIR = join(DATA_DIR, "native");
 export function ensureDirs() {
-    // one-time migration from the pre-rename data dir — bots, transcripts,
+    // one-time migration from pre-rename data dirs — bots, transcripts,
     // config and keys all carry over
-    if (!existsSync(DATA_DIR) && existsSync(LEGACY_DATA_DIR)) {
-        try {
-            renameSync(LEGACY_DATA_DIR, DATA_DIR);
-        }
-        catch {
-            /* cross-device or busy — fall through to a fresh dir */
+    if (!existsSync(DATA_DIR)) {
+        for (const legacyDir of LEGACY_DATA_DIRS) {
+            if (existsSync(legacyDir)) {
+                try {
+                    renameSync(legacyDir, DATA_DIR);
+                    console.log(`Migrated data from ${legacyDir} to ${DATA_DIR}`);
+                    break;
+                }
+                catch {
+                    /* cross-device or busy — fall through to a fresh dir */
+                }
+            }
         }
     }
     for (const dir of [DATA_DIR, EVENTS_DIR, NATIVE_DIR])
@@ -30,12 +55,14 @@ export function loadConfig() {
     catch {
         /* first run — env fallbacks below */
     }
+    // Environment variable fallbacks (WA_* preferred, OMB_*/OGB_* for compat)
+    cfg.hf = { key: process.env.HF_TOKEN ?? process.env.HUGGINGFACE_TOKEN, ...cfg.hf };
     cfg.xai = { key: process.env.XAI_API_KEY, ...cfg.xai };
     cfg.composio = { key: process.env.COMPOSIO_KEY, ...cfg.composio };
     cfg.box = { token: process.env.BOX_TOKEN, ...cfg.box };
     return cfg;
 }
-/** Merge a partial config into ~/.openmausbot/config.json (secrets never
+/** Merge a partial config into ~/.workspacealberta/config.json (secrets never
  * echoed back — callers report configured-or-not booleans only). */
 export function saveConfig(patch) {
     const p = join(DATA_DIR, "config.json");
@@ -46,7 +73,7 @@ export function saveConfig(patch) {
     catch {
         /* first write */
     }
-    for (const key of ["xai", "composio", "box"]) {
+    for (const key of ["hf", "xai", "composio", "box"]) {
         if (patch[key] && typeof patch[key] === "object") {
             disk[key] = { ...disk[key], ...patch[key] };
         }
@@ -54,23 +81,25 @@ export function saveConfig(patch) {
     mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(p, JSON.stringify(disk, null, 2));
 }
-// Default fleet: one instance per built-in driver (upstream
-// defaultInstanceIdForDriver — instanceId defaults to the driver kind).
+// Default fleet: WorkspaceAlberta prefers Hugging Face as the primary provider
+// for open-source, EU-pinnable inference. Claude/Codex drivers remain available
+// for power users with those CLIs installed.
 // Config-file keys are injected as per-instance environment so drivers
 // see them without needing real process env vars.
 export function instanceConfigs(cfg) {
-    // No grok instance by default: the xAI API key is a credential Milind
-    // doesn't want to manage — the CLI agents + the box are the fleet. The
-    // driver stays registered; an `instances` entry brings it back anytime.
     const map = cfg.instances && Object.keys(cfg.instances).length
         ? cfg.instances
         : {
+            // Hugging Face is the default for WorkspaceAlberta appliance
+            huggingface: { driver: "huggingface" },
+            // CLI-based agents remain available for those who have them
             claude: { driver: "claudeAgent" },
             codex: { driver: "codex" },
             computer: { driver: "boxAgent" },
         };
     for (const entry of Object.values(map)) {
         entry.environment = {
+            ...(cfg.hf?.key ? { HF_TOKEN: cfg.hf.key } : {}),
             ...(cfg.xai?.key ? { XAI_API_KEY: cfg.xai.key } : {}),
             ...(cfg.box?.token ? { BOX_TOKEN: cfg.box.token } : {}),
             ...entry.environment,
