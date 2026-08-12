@@ -2,7 +2,7 @@
 
 # WorkspaceAlberta
 
-**Linux-first CEO productivity chat app with AI bots**
+**Setup + Linux/Pi chat app for CEO productivity terminals**
 
 A team of AI bots in a messaging interface, powered by open-source models from Hugging Face.
 Built for Raspberry Pi desk terminals and Linux workstations.
@@ -16,6 +16,22 @@ Built for Raspberry Pi desk terminals and Linux workstations.
 <br>
 
 </div>
+
+---
+
+## Start Here
+
+This repository is the **setup home** for WorkspaceAlberta CEO productivity terminals:
+
+| What | Where |
+|------|-------|
+| **Pi first-boot installer** | [`installer/install-ceo-pi.sh`](installer/install-ceo-pi.sh) |
+| **Beginner's Pi guide** | [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md) |
+| **Installer reference** | [`docs/ceo-pi-setup.md`](docs/ceo-pi-setup.md) |
+| **Remote support runbook** | [`docs/tailscale-pi-remote-support.md`](docs/tailscale-pi-remote-support.md) |
+| **Linux chat app source** | This repo (React + Electron) |
+
+**Related:** The procurement MCP product (CanadaBuys agents, Hermes appliance) lives in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta).
 
 ---
 
@@ -39,7 +55,31 @@ contacts, watch them work, approve what matters.
 - **Multiple bots** — Not one assistant, but a team: create bots for different roles, each with
   their own model and personality.
 
-## Quick Start
+---
+
+## Quick Start: Pi Terminal Setup
+
+**New to Raspberry Pi?** Follow the complete guide: [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md)
+
+**Already have a Pi running Ubuntu/Raspberry Pi OS?** Run the installer:
+
+```sh
+git clone https://github.com/HarleyCoops/workspaceAlbertaSetup.git ~/workspaceAlbertaSetup
+cd ~/workspaceAlbertaSetup
+chmod +x installer/install-ceo-pi.sh
+./installer/install-ceo-pi.sh
+```
+
+This installs:
+- **1Password** for secure credential management
+- **Tailscale** for remote support
+- **Codex CLI + ChatGPT Desktop** for AI-assisted work
+- **OpenCode** for MCP agent workflows
+- **WorkspaceAlberta chat app** (from releases, or build instructions)
+
+---
+
+## Quick Start: Install the Chat App
 
 ### On Raspberry Pi / Ubuntu Desktop
 
@@ -47,10 +87,10 @@ contacts, watch them work, approve what matters.
 
 ```sh
 # For Raspberry Pi 5 (arm64)
-wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_*_arm64.deb
+wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_arm64.deb
 
 # For x64 Linux
-wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_*_amd64.deb
+wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_amd64.deb
 ```
 
 **2. Install:**
@@ -95,6 +135,8 @@ pnpm package:pi             # Just the arm64 deb
 pnpm package:mac
 ```
 
+---
+
 ## Configuration
 
 ### Hugging Face (Default Provider)
@@ -129,6 +171,8 @@ Paste credentials in **App Settings** to unlock additional features:
 | Composio Connect key (`ck_…`) | Gmail, Slack, GitHub, and 500+ app integrations |
 | Box token | Cloud computers for your bots |
 
+---
+
 ## System Requirements
 
 ### Raspberry Pi (Primary Target)
@@ -147,6 +191,8 @@ Paste credentials in **App Settings** to unlock additional features:
 
 - macOS 12+ (Monterey or later)
 - Apple Silicon or Intel
+
+---
 
 ## Architecture
 
@@ -177,6 +223,8 @@ The driver SPI is intentionally small. Adding a provider:
 2. Register in `server/drivers/builtIn.ts`
 3. Add icon in `src/components/ProviderIcons.tsx`
 
+---
+
 ## Data Storage
 
 | Platform | Location |
@@ -190,6 +238,8 @@ Contents:
 - `messages-<threadId>.json` — Transcripts per thread
 - `events/` — Raw provider event logs (NDJSON)
 
+---
+
 ## Environment Variables
 
 | Variable | Purpose | Default |
@@ -201,11 +251,15 @@ Contents:
 | `BOX_TOKEN` | Box cloud computer token | — |
 | `COMPOSIO_KEY` | Composio Connect key | — |
 
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
 Based on [OpenMausBot](https://github.com/milind-soni/OpenMausBot) by Milind Soni.
+
+---
 
 ## Contributing
 
