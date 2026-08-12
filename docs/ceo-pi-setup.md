@@ -6,6 +6,7 @@ This runbook covers first-boot setup for WorkspaceAlberta CEO productivity termi
 
 The CEO stack focuses on hyperproductive AI-assisted workflows:
 
+- **1Password** for secure credential and secrets management
 - **Tailscale** for secure remote support
 - **Codex CLI** for AI pair programming from the terminal
 - **ChatGPT / Codex Desktop** for conversational AI on the desktop
@@ -57,6 +58,7 @@ All configuration is through environment variables. All are optional with sensib
 | `SUPPORT_USER` | `support` | Remote support user account |
 | `TS_AUTHKEY` | (none) | Tailscale auth key for unattended join |
 | `TS_TAGS` | `tag:wa-terminal,tag:wa-pi5` | Tailscale device tags |
+| `INSTALL_1PASSWORD` | `1` | Install 1Password desktop + CLI |
 | `INSTALL_CODEX_DESKTOP` | `1` | Install ChatGPT / Codex desktop app |
 | `INSTALL_OPENCODE` | `1` | Install OpenCode CLI |
 | `INSTALL_CODEX_CLI` | `1` | Install Codex CLI |
@@ -81,6 +83,21 @@ Unattended-upgrades is enabled to keep security patches current.
 ### Support user
 
 Creates the support user (default: `support`) if missing and adds to the sudo group. This matches the remote support model in `tailscale-pi-remote-support.md`.
+
+### 1Password
+
+Installs the 1Password desktop app and CLI (`op`) for the CEO terminal's password/secrets layer.
+
+**Desktop app:** Downloaded as a tarball from 1Password's official CDN and extracted to `/opt/1Password`:
+
+- ARM64: `https://downloads.1password.com/linux/tar/stable/aarch64/1password-latest.tar.gz`
+- x86_64: `https://downloads.1password.com/linux/tar/stable/x86_64/1password-latest.tar.gz`
+
+After extraction, runs `/opt/1Password/after-install.sh` to complete setup.
+
+**CLI (`op`):** Installed via apt from 1Password's official Debian repository with GPG verification. Supports both arm64 and amd64.
+
+Skip with `INSTALL_1PASSWORD=0`.
 
 ### Tailscale
 
@@ -171,11 +188,15 @@ By default this is off (`0`) because:
 
 After the installer completes, open a new terminal and complete these steps:
 
-### 1. Sign into ChatGPT Desktop
+### 1. Sign into 1Password
+
+Launch 1Password from the applications menu and sign in with your CEO / business account. Enable browser integration if prompted for autofill in Chromium/Firefox.
+
+### 2. Sign into ChatGPT Desktop
 
 Launch ChatGPT from the applications menu and sign in with your OpenAI account.
 
-### 2. Authenticate Codex CLI
+### 3. Authenticate Codex CLI
 
 ```bash
 codex
@@ -183,7 +204,7 @@ codex
 
 Follow the browser sign-in flow to authenticate.
 
-### 3. Authenticate OpenCode
+### 4. Authenticate OpenCode
 
 ```bash
 opencode
@@ -191,14 +212,14 @@ opencode
 
 Follow the provider authentication flow.
 
-### 4. Configure WorkspaceAlberta Chat App
+### 5. Configure WorkspaceAlberta Chat App
 
 Launch WorkspaceAlberta from the applications menu:
 - Open **App Settings** (gear icon in sidebar)
 - Paste your [Hugging Face token](https://huggingface.co/settings/tokens)
 - Start chatting with AI bots
 
-### 5. Complete Tailscale setup (if no auth key was provided)
+### 6. Complete Tailscale setup (if no auth key was provided)
 
 ```bash
 sudo tailscale up --advertise-tags="tag:wa-terminal,tag:wa-pi5" --ssh
@@ -220,6 +241,10 @@ hostnamectl
 # Tailscale
 tailscale status
 tailscale ip -4
+
+# 1Password
+1password --version
+op --version
 
 # AI tools
 codex --version

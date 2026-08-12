@@ -2,7 +2,7 @@
 
 A complete beginner's guide to setting up a WorkspaceAlberta CEO productivity terminal from a sealed box. No prior Raspberry Pi experience required.
 
-By the end of this guide you will have a working AI-assisted productivity desk: ChatGPT Desktop for conversational AI, Codex CLI for terminal-based coding help, OpenCode for MCP agent workflows, Tailscale for remote support without router hassles, and the WorkspaceAlberta chat app for open-source AI bots.
+By the end of this guide you will have a working AI-assisted productivity desk: 1Password for secure credential management, ChatGPT Desktop for conversational AI, Codex CLI for terminal-based coding help, OpenCode for MCP agent workflows, Tailscale for remote support without router hassles, and the WorkspaceAlberta chat app for open-source AI bots.
 
 ---
 
@@ -109,7 +109,7 @@ If prompted, enter the password you created during setup. You will not see chara
 
 ## 5. Run the CEO Software Installer
 
-The installer script sets up the AI productivity tools: Tailscale, Codex CLI, ChatGPT Desktop, OpenCode, and the WorkspaceAlberta chat app.
+The installer script sets up the CEO productivity tools: 1Password, Tailscale, Codex CLI, ChatGPT Desktop, OpenCode, and the WorkspaceAlberta chat app.
 
 ### Basic install
 
@@ -149,13 +149,20 @@ For the full list of installer options, see [`ceo-pi-setup.md`](ceo-pi-setup.md)
 
 After the installer finishes, open a **new terminal** (or run `source ~/.bashrc`) so the new tools are on your PATH.
 
-### 1. Sign into ChatGPT Desktop
+### 1. Sign into 1Password
+
+- Open the applications menu and launch **1Password**.
+- Sign in with your CEO / business account (or create one at [1password.com](https://1password.com)).
+- Enable browser integration if prompted — this unlocks autofill in Chromium/Firefox.
+- The 1Password CLI (`op`) is also installed for scripting and automation.
+
+### 2. Sign into ChatGPT Desktop
 
 - Open the applications menu and launch **ChatGPT**.
 - Sign in with your OpenAI account (create one at [chat.openai.com](https://chat.openai.com) if needed).
 - Once signed in, you can use ChatGPT directly on your desktop.
 
-### 2. Authenticate Codex CLI
+### 3. Authenticate Codex CLI
 
 In the terminal, run:
 
@@ -165,7 +172,7 @@ codex
 
 A browser window will open. Sign in with your OpenAI account. Once authenticated, Codex CLI can help you write and debug code from the terminal.
 
-### 3. Authenticate OpenCode
+### 4. Authenticate OpenCode
 
 In the terminal, run:
 
@@ -175,7 +182,7 @@ opencode
 
 Follow the authentication prompts for your preferred AI provider.
 
-### 4. Launch WorkspaceAlberta Chat App
+### 5. Launch WorkspaceAlberta Chat App
 
 - Open the applications menu and launch **WorkspaceAlberta**.
 - Open **App Settings** (gear icon in sidebar) and paste your [Hugging Face token](https://huggingface.co/settings/tokens).
@@ -190,7 +197,7 @@ pnpm package:pi
 sudo dpkg -i dist/workspacealberta_*_arm64.deb
 ```
 
-### 5. Approve Tailscale (if no auth key was provided)
+### 6. Approve Tailscale (if no auth key was provided)
 
 If you ran the installer without a `TS_AUTHKEY`, Tailscale is installed but not connected. To join:
 
@@ -214,6 +221,10 @@ hostname
 tailscale status
 tailscale ip -4
 
+# Check 1Password
+1password --version
+op --version
+
 # Check AI tools
 codex --version
 opencode --version
@@ -225,6 +236,7 @@ dpkg -l | grep workspacealberta
 
 - `hostname` shows your device name.
 - `tailscale status` shows "Connected" or lists your Tailscale IP.
+- `1password --version` and `op --version` print version numbers.
 - `codex --version` and `opencode --version` print version numbers.
 - `dpkg -l | grep chatgpt` shows a line with "chatgpt" (the desktop app).
 - `dpkg -l | grep workspacealberta` shows the chat app (if installed from release).

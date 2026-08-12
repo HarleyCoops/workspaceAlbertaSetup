@@ -71,6 +71,7 @@ chmod +x installer/install-ceo-pi.sh
 ```
 
 This installs:
+- **1Password** for secure credential management
 - **Tailscale** for remote support
 - **Codex CLI + ChatGPT Desktop** for AI-assisted work
 - **OpenCode** for MCP agent workflows

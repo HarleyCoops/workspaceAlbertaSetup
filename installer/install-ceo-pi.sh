@@ -9,6 +9,7 @@ set -euo pipefail
 # before running this script.
 #
 # This installer sets up the hyperproductive CEO stack:
+# - 1Password for secrets and password management
 # - Tailscale for remote support
 # - Codex CLI + ChatGPT desktop for AI-assisted work
 # - OpenCode for MCP-first agent workflows
@@ -23,6 +24,7 @@ HOSTNAME_FQ="${HOSTNAME_FQ:-}"
 SUPPORT_USER="${SUPPORT_USER:-support}"
 TS_AUTHKEY="${TS_AUTHKEY:-}"
 TS_TAGS="${TS_TAGS:-tag:wa-terminal,tag:wa-pi5}"
+INSTALL_1PASSWORD="${INSTALL_1PASSWORD:-1}"
 INSTALL_CODEX_DESKTOP="${INSTALL_CODEX_DESKTOP:-1}"
 INSTALL_OPENCODE="${INSTALL_OPENCODE:-1}"
 INSTALL_CODEX_CLI="${INSTALL_CODEX_CLI:-1}"
@@ -151,6 +153,122 @@ if [ "$INSTALL_TAILSCALE" = "1" ]; then
   fi
 else
   log "Skipping Tailscale installation (INSTALL_TAILSCALE=0)"
+fi
+
+# -----------------------------------------------------------------------------
+# 1Password (Desktop + CLI)
+# Password manager layer for the CEO terminal — secrets, browser unlock, SSH agent
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_1PASSWORD" = "1" ]; then
+  log "Installing 1Password"
+
+  arch_raw="$(uname -m)"
+  onepassword_installed=false
+
+  # --- 1Password Desktop (tarball install) ---
+  # Check if already installed
+  if require_command 1password || [ -d "/opt/1Password" ] && [ -x "/opt/1Password/1password" ]; then
+    log "1Password desktop already installed"
+    onepassword_installed=true
+  else
+    case "$arch_raw" in
+      aarch64|arm64)
+        op_tarball_url="https://downloads.1password.com/linux/tar/stable/aarch64/1password-latest.tar.gz"
+        ;;
+      x86_64)
+        op_tarball_url="https://downloads.1password.com/linux/tar/stable/x86_64/1password-latest.tar.gz"
+        ;;
+      *)
+        warn "Unknown architecture '$arch_raw'; skipping 1Password desktop install"
+        op_tarball_url=""
+        ;;
+    esac
+
+    if [ -n "$op_tarball_url" ]; then
+      log "Downloading 1Password desktop for $arch_raw"
+      op_tarball="/tmp/1password-latest.tar.gz"
+      if curl -fsSL -o "$op_tarball" "$op_tarball_url"; then
+        log "Extracting 1Password to /opt/1Password"
+        sudo mkdir -p /opt/1Password
+        sudo tar -xzf "$op_tarball" -C /opt/1Password --strip-components=1
+
+        if [ -x "/opt/1Password/after-install.sh" ]; then
+          log "Running 1Password after-install script"
+          sudo /opt/1Password/after-install.sh || warn "1Password after-install.sh returned non-zero"
+        fi
+
+        rm -f "$op_tarball"
+        onepassword_installed=true
+        log "1Password desktop installed"
+      else
+        warn "Failed to download 1Password desktop; continuing without it"
+      fi
+    fi
+  fi
+
+  # --- 1Password CLI (op) ---
+  if require_command op; then
+    log "1Password CLI (op) already installed"
+  else
+    log "Installing 1Password CLI"
+
+    # Add 1Password apt repository with GPG key
+    # Works for both amd64 and arm64
+    op_cli_installed=false
+
+    # Install prerequisites for apt repo
+    sudo apt-get install -y gpg || warn "Could not install gpg"
+
+    # Add the 1Password GPG key
+    if curl -fsSL https://downloads.1password.com/linux/keys/1password.asc | \
+       sudo gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg 2>/dev/null; then
+
+      # Determine apt arch string
+      case "$arch_raw" in
+        aarch64|arm64)
+          apt_arch="arm64"
+          ;;
+        x86_64)
+          apt_arch="amd64"
+          ;;
+        *)
+          apt_arch=""
+          ;;
+      esac
+
+      if [ -n "$apt_arch" ]; then
+        # Add the apt repository
+        echo "deb [arch=$apt_arch signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/$apt_arch stable main" | \
+          sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
+
+        # Add debsig policy for package verification
+        sudo mkdir -p /etc/debsig/policies/AC2D62742012EA22/
+        curl -fsSL https://downloads.1password.com/linux/debian/debsig/1password.pol | \
+          sudo tee /etc/debsig/policies/AC2D62742012EA22/1password.pol >/dev/null
+        sudo mkdir -p /usr/share/debsig/keyrings/AC2D62742012EA22
+        curl -fsSL https://downloads.1password.com/linux/keys/1password.asc | \
+          sudo gpg --dearmor -o /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg 2>/dev/null
+
+        # Update and install CLI
+        sudo apt-get update
+        if sudo apt-get install -y 1password-cli; then
+          op_cli_installed=true
+          log "1Password CLI installed via apt"
+        else
+          warn "apt install of 1password-cli failed"
+        fi
+      fi
+    else
+      warn "Could not add 1Password GPG key"
+    fi
+
+    if [ "$op_cli_installed" = "false" ]; then
+      warn "1Password CLI installation failed — you can install it manually later"
+      warn "See: https://developer.1password.com/docs/cli/get-started/"
+    fi
+  fi
+else
+  log "Skipping 1Password installation (INSTALL_1PASSWORD=0)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -378,6 +496,23 @@ if [ "$INSTALL_TAILSCALE" = "1" ]; then
 else
   echo "Tailscale:      skipped"
 fi
+
+# 1Password
+if [ "$INSTALL_1PASSWORD" = "1" ]; then
+  if require_command 1password || [ -x "/opt/1Password/1password" ]; then
+    echo "1Password:      installed"
+  else
+    echo "1Password:      not installed"
+  fi
+  if require_command op; then
+    op_ver="$(op --version 2>/dev/null || echo 'installed')"
+    echo "1Password CLI:  $op_ver"
+  else
+    echo "1Password CLI:  not installed"
+  fi
+else
+  echo "1Password:      skipped"
+fi
 echo ""
 
 # Codex CLI
@@ -441,48 +576,58 @@ echo ""
 echo "1. Open a new terminal or run: source ~/.bashrc"
 echo ""
 
+if [ "$INSTALL_1PASSWORD" = "1" ]; then
+  echo "2. Sign into 1Password:"
+  echo "   - Launch '1Password' from the applications menu"
+  echo "   - Sign in with your CEO / business account"
+  echo "   - Enable browser integration if prompted"
+  echo ""
+fi
+
 if [ "$INSTALL_CODEX_DESKTOP" = "1" ]; then
-  echo "2. Sign into ChatGPT Desktop:"
+  echo "3. Sign into ChatGPT Desktop:"
   echo "   - Launch 'ChatGPT' from the applications menu"
   echo "   - Sign in with your OpenAI account"
   echo ""
 fi
 
 if [ "$INSTALL_CODEX_CLI" = "1" ]; then
-  echo "3. Authenticate Codex CLI:"
+  echo "4. Authenticate Codex CLI:"
   echo "   codex"
   echo "   (Follow the browser sign-in flow)"
   echo ""
 fi
 
 if [ "$INSTALL_OPENCODE" = "1" ]; then
-  echo "4. Authenticate OpenCode:"
+  echo "5. Authenticate OpenCode:"
   echo "   opencode"
   echo "   (Follow the provider auth flow)"
   echo ""
 fi
 
 if [ "$INSTALL_TAILSCALE" = "1" ] && [ -z "$TS_AUTHKEY" ]; then
-  echo "5. Complete Tailscale setup:"
+  echo "6. Complete Tailscale setup:"
   echo "   sudo tailscale up --advertise-tags=\"$TS_TAGS\" --ssh"
   echo "   (Then approve the device in Tailscale admin console)"
   echo ""
 fi
 
-echo "6. Verify the setup:"
+echo "7. Verify the setup:"
 echo "   tailscale status"
+echo "   1password --version"
+echo "   op --version"
 echo "   codex --version"
 echo "   opencode --version"
 echo ""
 
 if [ "$INSTALL_WA_CHAT_APP" = "1" ]; then
-  echo "7. Launch WorkspaceAlberta chat app:"
+  echo "8. Launch WorkspaceAlberta chat app:"
   echo "   - Find 'WorkspaceAlberta' in your applications menu, or"
   echo "   - Build from source: cd $REPO_DIR && pnpm install && pnpm package:pi"
   echo ""
 fi
 
-echo "8. (Optional) Install procurement MCP tools:"
+echo "9. (Optional) Install procurement MCP tools:"
 echo "   git clone https://github.com/HarleyCoops/WorkspaceAlberta.git ~/WorkspaceAlberta"
 echo "   cd ~/WorkspaceAlberta"
 echo "   python -m pip install -r requirements.txt"
