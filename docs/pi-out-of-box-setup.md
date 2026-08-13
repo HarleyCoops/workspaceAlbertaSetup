@@ -339,6 +339,7 @@ sudo dpkg -i dist/workspacealberta_*_arm64.deb
 
 - Read the full software installer reference: [`ceo-pi-setup.md`](ceo-pi-setup.md)
 - Learn about remote support: [`tailscale-pi-remote-support.md`](tailscale-pi-remote-support.md)
+- Phone-based support with Litter: [`litter-remote-support.md`](litter-remote-support.md)
 - Configure Hugging Face for the chat app: open WorkspaceAlberta → App Settings → paste your HF token
 
 ---
