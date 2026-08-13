@@ -14,7 +14,8 @@ export interface AppConfig {
    * apiKey = ak_… project API key — optional, unlocks the full toolkit
    * catalog with official logos in the plugins marketplace. */
   composio?: { key?: string; apiKey?: string; url?: string };
-  box?: { token?: string };
+  /** e2b sandbox API key — optional, enables cloud sandboxes for bots. */
+  e2b?: { apiKey?: string };
   instances?: InstanceConfigMap;
 }
 
@@ -75,7 +76,7 @@ export function loadConfig(): AppConfig {
   cfg.hf = { key: process.env.HF_TOKEN ?? process.env.HUGGINGFACE_TOKEN, ...cfg.hf };
   cfg.xai = { key: process.env.XAI_API_KEY, ...cfg.xai };
   cfg.composio = { key: process.env.COMPOSIO_KEY, ...cfg.composio };
-  cfg.box = { token: process.env.BOX_TOKEN, ...cfg.box };
+  cfg.e2b = { apiKey: process.env.E2B_API_KEY, ...cfg.e2b };
   return cfg;
 }
 
@@ -89,7 +90,7 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   } catch {
     /* first write */
   }
-  for (const key of ["hf", "xai", "composio", "box"] as const) {
+  for (const key of ["hf", "xai", "composio", "e2b"] as const) {
     if (patch[key] && typeof patch[key] === "object") {
       disk[key] = { ...(disk[key] as object), ...patch[key] };
     }
@@ -113,13 +114,12 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
           // CLI-based agents remain available for those who have them
           claude: { driver: "claudeAgent" },
           codex: { driver: "codex" },
-          computer: { driver: "boxAgent" },
         };
   for (const entry of Object.values(map)) {
     entry.environment = {
       ...(cfg.hf?.key ? { HF_TOKEN: cfg.hf.key } : {}),
       ...(cfg.xai?.key ? { XAI_API_KEY: cfg.xai.key } : {}),
-      ...(cfg.box?.token ? { BOX_TOKEN: cfg.box.token } : {}),
+      ...(cfg.e2b?.apiKey ? { E2B_API_KEY: cfg.e2b.apiKey } : {}),
       ...entry.environment,
     };
   }

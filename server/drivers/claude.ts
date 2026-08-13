@@ -249,17 +249,17 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
         };
         allowed.push("mcp__composio");
       }
-      if (turn.integrations?.computer) {
-        mcpServers.computer = {
+      if (turn.integrations?.sandbox) {
+        mcpServers.sandbox = {
           command: process.execPath,
           args: [PROXY_PATH],
           env: {
             ...NODE_ENV_FLAG,
-            OGB_BOX_ID: turn.integrations.computer.boxId,
-            OGB_BOX_TOKEN: turn.integrations.computer.token,
+            OGB_SANDBOX_ID: turn.integrations.sandbox.sandboxId,
+            E2B_API_KEY: turn.integrations.sandbox.apiKey,
           },
         };
-        allowed.push("mcp__computer");
+        allowed.push("mcp__sandbox");
       } else if (turn.integrations?.localComputer) {
         // this Mac, via the Electron-owned cua-driver daemon (spawn config
         // read from cua-connection.json — same "computer" name either way,

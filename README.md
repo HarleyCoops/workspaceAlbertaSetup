@@ -170,7 +170,7 @@ Paste credentials in **App Settings** to unlock additional features:
 | Key | Unlocks |
 |-----|---------|
 | Composio Connect key (`ck_…`) | Gmail, Slack, GitHub, and 500+ app integrations |
-| Box token | Cloud computers for your bots |
+| e2b API key (`e2b_…`) | Cloud sandboxes for your bots (isolated Linux environments) |
 
 ---
 
@@ -209,12 +209,17 @@ WorkspaceAlberta is two processes:
                             │ HTTP + SSE
 ┌───────────────────────────▼─────────────────────────────────────┐
 │  Harness Server (127.0.0.1:8799)                                │
-│  - Driver registry: HF, Claude CLI, Codex CLI, Box              │
+│  - Driver registry: HF, Claude CLI, Codex CLI                   │
 │  - Event bus normalizes all provider protocols                  │
 │  - Permission broker for tool approvals                         │
 │  - Transcript storage in ~/.config/workspacealberta             │
+│  - Optional e2b sandbox integration for isolated compute        │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Note:** The Raspberry Pi is the always-on host for the WorkspaceAlberta harness.
+e2b sandboxes are **optional** — they provide isolated Linux environments for bots
+that need remote compute, but are not required for basic operation.
 
 ### Adding a Provider
 
@@ -249,7 +254,7 @@ Contents:
 | `HF_BASE_URL` | Custom HF inference endpoint | `https://router.huggingface.co/v1` |
 | `WA_PORT` | Server port | `8799` |
 | `WA_ANALYTICS` | Opt-in to telemetry (`1` to enable) | disabled |
-| `BOX_TOKEN` | Box cloud computer token | — |
+| `E2B_API_KEY` | e2b sandbox API key (optional) | — |
 | `COMPOSIO_KEY` | Composio Connect key | — |
 
 ---

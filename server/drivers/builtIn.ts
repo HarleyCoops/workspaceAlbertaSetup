@@ -3,8 +3,10 @@
 //
 // WorkspaceAlberta: Hugging Face is listed first as the primary provider
 // for the Linux/Pi appliance. Claude/Codex remain for power users.
+// Note: Box agent driver removed in favor of e2b sandboxes (no equivalent
+// "run agent on remote" API — agents run on the Pi harness, sandboxes
+// provide isolated compute via shell commands).
 import type { AnyProviderDriver } from "../contracts.ts";
-import { BoxAgentDriver } from "./boxagent.ts";
 import { ClaudeDriver } from "./claude.ts";
 import { CodexDriver } from "./codex.ts";
 import { GrokDriver } from "./grok.ts";
@@ -15,5 +17,4 @@ export const BUILT_IN_DRIVERS: readonly AnyProviderDriver[] = [
   GrokDriver,
   ClaudeDriver,
   CodexDriver,
-  BoxAgentDriver,
 ];

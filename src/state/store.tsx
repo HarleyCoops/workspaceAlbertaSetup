@@ -68,7 +68,7 @@ export interface ConfigStatus {
   hf?: { configured: boolean };
   xai?: { configured: boolean };
   composio: { configured: boolean; apiKeyConfigured?: boolean };
-  box: { configured: boolean };
+  e2b?: { configured: boolean };
 }
 
 /** One row of GET /api/instances — the model picker's data. */
@@ -523,7 +523,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "config":
           rawDispatch({
             type: "configStatus",
-            config: { hf: frame.hf, xai: frame.xai, composio: frame.composio, box: frame.box },
+            config: { hf: frame.hf, xai: frame.xai, composio: frame.composio, e2b: frame.e2b },
           });
           api("/api/instances")
             .then(({ instances }) => rawDispatch({ type: "instances", instances }))

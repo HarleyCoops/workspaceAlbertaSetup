@@ -1,13 +1,13 @@
 // The bot's computer, in the right-side slot. Where it runs decides the
-// whole flow: cloud → provision the box on open (idempotent) and preview
-// via SSE frames or a ~4s screenshot poll; local ("This Mac") → frames
+// whole flow: cloud → provision the e2b sandbox on open (idempotent) and
+// run commands in the isolated environment; local ("This Mac") → frames
 // come from the Electron main process (desktopCapturer over the preload
-// bridge — box endpoints are never touched); off → parked. Auto (unset)
-// prefers the cloud box when one exists, else local inside the app.
+// bridge — e2b endpoints are never touched); off → parked. Auto (unset)
+// prefers the cloud sandbox when one exists, else local inside the app.
+// Note: e2b sandboxes are headless Linux VMs — no desktop/VNC.
 import { useEffect, useRef, useState } from "react";
 import {
   CalendarClock,
-  ExternalLink,
   Loader2,
   Monitor,
   Moon,
@@ -39,15 +39,15 @@ type Phase =
 export function ComputerPanel({ bot }: { bot: Bot }) {
   const { state, dispatch } = useStore();
   const [phase, setPhase] = useState<Phase>("checking");
-  const [boxState, setBoxState] = useState<string | null>(null);
+  const [sandboxState, setSandboxState] = useState<string | null>(null);
   const [polledFrame, setPolledFrame] = useState<{ png: string; mime: string } | null>(null);
   const [localFrame, setLocalFrame] = useState<string | null>(null);
   const [pending, setPending] = useState<"join" | "sleep" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // bumped when a Box token is saved inline, to re-run the spin-up flow
+  // bumped when an e2b API key is saved inline, to re-run the spin-up flow
   const [retry, setRetry] = useState(0);
 
-  // resolve the mode on open; box endpoints are only ever hit on the
+  // resolve the mode on open; e2b endpoints are only ever hit on the
   // cloud path, so local/off can never render a JSON error as an image
   useEffect(() => {
     let alive = true;
@@ -64,7 +64,7 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
       setPhase(isElectron ? "local" : "local-unavailable");
       return;
     }
-    // cloud, or auto (cloud box wins when one exists, else local in-app)
+    // cloud, or auto (cloud sandbox wins when one exists, else local in-app)
     api(`/api/bots/${bot.id}/computer`)
       .then((status) => {
         if (!alive) return;
@@ -73,14 +73,14 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
           setPhase(autoLocal ? "local" : "unconfigured");
           return;
         }
-        if (!status.box && autoLocal) {
+        if (!status.sandbox && autoLocal) {
           setPhase("local");
           return;
         }
         setPhase("starting");
         return api(`/api/bots/${bot.id}/computer/provision`, { method: "POST" }).then((r) => {
           if (!alive) return;
-          setBoxState(r.state ?? null);
+          setSandboxState(r.state ?? null);
           setPhase("ready");
         });
       })
@@ -157,10 +157,10 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
     setPending(kind);
     setError(null);
     api(`/api/bots/${bot.id}/computer/${kind}`, { method: "POST" })
-      .then((result) => {
-        // the join URL's stream token rotates — always freshly minted, never cached
-        if (kind === "join" && result.joinUrl) window.open(result.joinUrl);
-        if (kind === "sleep") setBoxState("archived");
+      .then(() => {
+        // e2b sandboxes don't have desktop URLs; join just resumes
+        if (kind === "sleep") setSandboxState("paused");
+        if (kind === "join") setSandboxState("running");
       })
       .catch((e) => setError(e.message))
       .finally(() => setPending(null));
@@ -168,11 +168,11 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
 
   const emptyState: Record<Exclude<Phase, "ready" | "local">, string> = {
     checking: "Checking…",
-    starting: "Starting your bot's computer…",
-    unconfigured: "No cloud computer configured",
+    starting: "Starting your bot's sandbox…",
+    unconfigured: "No cloud sandbox configured",
     "local-unavailable": "Local preview needs the desktop app — run pnpm dev:desktop",
     off: "This bot's computer is off",
-    error: "Couldn't reach the computer",
+    error: "Couldn't reach the sandbox",
   };
 
   return (
@@ -232,37 +232,42 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
         {phase === "unconfigured" && (
           <div className="mt-3 rounded-xl bg-card p-4">
             <div className="mb-3 text-[13px] text-ink-secondary">
-              Paste a Box token from box.ascii.dev to give this bot a cloud computer — it spins up right here.
+              Paste an e2b API key from{" "}
+              <a href="https://e2b.dev/dashboard?tab=keys" target="_blank" rel="noreferrer" className="text-accent underline">
+                e2b.dev
+              </a>{" "}
+              to give this bot a cloud sandbox — an isolated Linux environment for running code.
             </div>
             <ApiKeyRow
-              section="box"
-              label="Box token"
-              placeholder="Token from box.ascii.dev"
+              section="e2b"
+              label="e2b API key"
+              placeholder="e2b_…"
               onSaved={(configured) => configured && setRetry((n) => n + 1)}
             />
           </div>
         )}
 
-        {/* Cloud-only actions */}
+        {/* Sandbox actions */}
         {phase === "ready" && (
           <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => run("join")}
-              disabled={pending === "join"}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
-            >
-              {pending === "join" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-              Open desktop
-            </button>
-            {boxState !== "archived" && (
+            {sandboxState === "paused" ? (
+              <button
+                onClick={() => run("join")}
+                disabled={pending === "join"}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
+              >
+                {pending === "join" ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
+                Resume sandbox
+              </button>
+            ) : (
               <button
                 onClick={() => run("sleep")}
                 disabled={pending === "sleep"}
-                className="flex items-center justify-center gap-2 rounded-lg bg-raised px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
-                title="Put the computer to sleep"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-raised py-2 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50"
+                title="Pause the sandbox (preserves state)"
               >
                 {pending === "sleep" ? <Loader2 size={14} className="animate-spin" /> : <Moon size={14} />}
-                Sleep
+                Pause sandbox
               </button>
             )}
           </div>
@@ -272,13 +277,13 @@ export function ComputerPanel({ bot }: { bot: Bot }) {
         <div className="mt-4 rounded-xl bg-card p-4">
           <div className="text-[15px] font-medium text-ink">Runs on</div>
           <div className="mt-0.5 text-[13px] text-ink-secondary">
-            {bot.computer ? "" : "Auto: the cloud box when one exists, else this Mac. "}Pick where this bot's
-            computer lives.
+            {bot.computer ? "" : "Auto: the e2b sandbox when one exists, else this Mac. "}Pick where this bot's
+            compute lives.
           </div>
           <div className="mt-3 flex overflow-hidden rounded-lg border border-hairline/40">
             {(
               [
-                ["cloud", "Cloud box"],
+                ["cloud", "e2b sandbox"],
                 ["local", "This Mac"],
                 ["off", "Off"],
               ] as const
