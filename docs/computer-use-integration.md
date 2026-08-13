@@ -15,7 +15,7 @@ Electron main process
 │     driven via webContents.debugger (CDP) — zero-install browser use
 └── server/ harness (drivers spawn agent CLIs with --mcp-config)
       ├── computer-proxy-local.ts  ──▶ forwards MCP tool calls to driver socket
-      └── computer-proxy.ts (existing) ──▶ remote/cloud box
+      └── computer-proxy.ts ──▶ e2b sandboxes (shell-only, no desktop)
 ```
 
 - **Plugins = MCP servers over stdio.** The Plugins panel toggles which MCP

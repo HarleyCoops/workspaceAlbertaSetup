@@ -6,7 +6,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
 
-import * as box from "./box.ts";
+import * as e2b from "./e2b.ts";
 import * as composio from "./composio.ts";
 import { ensureDirs, instanceConfigs, loadConfig, saveConfig, EVENTS_DIR, NATIVE_DIR } from "./config.ts";
 import type { RuntimeEvent } from "./contracts.ts";
@@ -156,9 +156,10 @@ bus.subscribe((event: RuntimeEvent) => {
   }
 });
 
-// ── live screen: poll the bot's box while it works ────────────────────
+// ── live screen: poll the bot's sandbox while it works ────────────────
 // Frames stream to clients as SSE {kind:'screen'} (the "Bot's screen"
 // panel); the final frame is folded into the transcript on turn end.
+// Note: e2b sandboxes are headless by default — screenshot may not work.
 type Frame = { png: string; mime: string };
 const screenPollers = new Map<
   string,
@@ -166,18 +167,18 @@ const screenPollers = new Map<
 >();
 
 function startScreenPoller(botId: string) {
-  if (screenPollers.has(botId) || !box.boxConfigured(cfg)) return;
+  if (screenPollers.has(botId) || !e2b.e2bConfigured(cfg)) return;
   let inFlight = false;
   const capture = async () => {
     if (inFlight) return;
     inFlight = true;
     try {
-      const { png, format } = await box.screenshotBox(cfg, botId);
+      const { png, format } = await e2b.screenshotSandbox(cfg, botId);
       const frame = { png, mime: format === "jpeg" ? "image/jpeg" : "image/png" };
       entry.last = frame;
       broadcast({ kind: "screen", botId, ...frame });
     } catch {
-      /* box asleep or mid-command — try again next tick */
+      /* sandbox paused or headless — try again next tick */
     } finally {
       inFlight = false;
     }
@@ -292,20 +293,20 @@ async function startTurn(botId: string, text: string) {
       const integrations: NonNullable<Parameters<typeof instance.adapter.sendTurn>[0]["integrations"]> = {};
       if (cfg.composio?.key) integrations.composio = { key: cfg.composio.key, url: cfg.composio.url };
       const wants = bot.computer; // 'cloud' | 'local' | 'off' | undefined(auto)
-      if (wants !== "off" && wants !== "local" && box.boxConfigured(cfg)) {
-        let b = await box.findBox(cfg, bot.id).catch(() => null);
-        // the Computer driver runs ON the box — provision it on first use
-        if (!b && instance.driverKind === "boxAgent") {
+      if (wants !== "off" && wants !== "local" && e2b.e2bConfigured(cfg)) {
+        let sandbox = await e2b.findSandbox(cfg, bot.id).catch(() => null);
+        // provision sandbox on first use if in cloud mode
+        if (!sandbox && wants === "cloud") {
           broadcast({ kind: "computer", botId: bot.id, state: "provisioning" });
-          await box.provisionBox(cfg, bot.id, bot.name);
-          b = await box.findBox(cfg, bot.id).catch(() => null);
+          await e2b.provisionSandbox(cfg, bot.id, bot.name);
+          sandbox = await e2b.findSandbox(cfg, bot.id).catch(() => null);
         }
-        if (b) integrations.computer = { boxId: b.id, token: cfg.box!.token! };
+        if (sandbox) integrations.sandbox = { sandboxId: sandbox.sandboxId, apiKey: cfg.e2b!.apiKey! };
       }
       // local computer (this Mac) via the Electron-hosted cua-driver: the
       // Electron main process owns the daemon (TCC attribution) and writes
       // its spawn contract to cua-connection.json; the harness only reads it
-      if (!integrations.computer && wants !== "off" && wants !== "cloud") {
+      if (!integrations.sandbox && wants !== "off" && wants !== "cloud") {
         const cua = readCuaConnection();
         if (cua) integrations.localComputer = cua;
       }
@@ -318,14 +319,14 @@ async function startTurn(botId: string, text: string) {
         transcript,
         system:
           persona +
-          (integrations.computer && instance.driverKind !== "boxAgent"
-            ? " You have your own cloud computer — use the computer tools (screenshot, computer_exec, open_url) whenever browsing or acting on a desktop helps."
+          (integrations.sandbox
+            ? " You have access to an e2b sandbox — use the sandbox_exec tool to run shell commands in the isolated Linux environment."
             : integrations.localComputer
               ? " You can act on the user's computer through the computer tools — take a screenshot or read the desktop state first, prefer accessibility actions over raw coordinates, and act carefully."
               : ""),
         integrations,
       });
-      if (integrations.computer) startScreenPoller(bot.id);
+      if (integrations.sandbox) startScreenPoller(bot.id);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const failure = store.appendMessage(bot.threadId, {
@@ -346,7 +347,7 @@ function configStatus() {
     hf: { configured: Boolean(cfg.hf?.key) },
     xai: { configured: Boolean(cfg.xai?.key) },
     composio: { configured: Boolean(cfg.composio?.key), apiKeyConfigured: Boolean(cfg.composio?.apiKey) },
-    box: { configured: Boolean(cfg.box?.token) },
+    e2b: { configured: Boolean(cfg.e2b?.apiKey) },
   };
 }
 
@@ -517,7 +518,7 @@ const server = createServer(async (req, res) => {
     if ((method === "PUT" || method === "PATCH") && path === "/api/config") {
       const body = await readBody(req);
       const patch: Record<string, object> = {};
-      for (const key of ["hf", "xai", "composio", "box"] as const) {
+      for (const key of ["hf", "xai", "composio", "e2b"] as const) {
         if (body[key] && typeof body[key] === "object") patch[key] = body[key];
       }
       if (!Object.keys(patch).length) return json(res, 400, { error: "nothing to save" });
@@ -545,27 +546,29 @@ const server = createServer(async (req, res) => {
     m = path.match(/^\/api\/connectors\/([\w-]+)$/);
     if (m && method === "DELETE") return json(res, 200, await composio.removeService(cfg, m[1]));
 
-    // ── the bot's cloud computer (Box) ──
+    // ── the bot's cloud sandbox (e2b) ──
     m = path.match(/^\/api\/bots\/([\w-]+)\/computer$/);
-    if (m && method === "GET") return json(res, 200, await box.boxStatus(cfg, m[1]));
-    m = path.match(/^\/api\/bots\/([\w-]+)\/computer\/(provision|join|sleep|exec|screenshot)$/);
+    if (m && method === "GET") return json(res, 200, await e2b.sandboxStatus(cfg, m[1]));
+    m = path.match(/^\/api\/bots\/([\w-]+)\/computer\/(provision|join|sleep|kill|exec|screenshot)$/);
     if (m && method === "POST") {
       const botId = m[1];
       const bot = store.bot(botId);
       if (!bot) return json(res, 404, { error: "no such bot" });
       switch (m[2]) {
         case "provision":
-          return json(res, 200, await box.provisionBox(cfg, botId, bot.name));
+          return json(res, 200, await e2b.provisionSandbox(cfg, botId, bot.name));
         case "join":
-          return json(res, 200, await box.joinBox(cfg, botId));
+          return json(res, 200, await e2b.joinSandbox(cfg, botId));
         case "sleep":
-          return json(res, 200, await box.sleepBox(cfg, botId));
+          return json(res, 200, await e2b.pauseSandbox(cfg, botId));
+        case "kill":
+          return json(res, 200, await e2b.killSandbox(cfg, botId));
         case "exec": {
           const body = await readBody(req);
-          return json(res, 200, await box.execOnBox(cfg, botId, String(body.command ?? "")));
+          return json(res, 200, await e2b.execOnSandbox(cfg, botId, String(body.command ?? "")));
         }
         case "screenshot":
-          return json(res, 200, await box.screenshotBox(cfg, botId));
+          return json(res, 200, await e2b.screenshotSandbox(cfg, botId));
       }
     }
 

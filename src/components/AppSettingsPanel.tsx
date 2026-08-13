@@ -60,7 +60,7 @@ export function AppSettingsPanel() {
               label="Composio API key (optional)"
               placeholder="ak_…  unlocks the full app catalog"
             />
-            <ApiKeyRow section="box" label="Box token" placeholder="Token from box.ascii.dev" />
+            <ApiKeyRow section="e2b" label="e2b API key" placeholder="e2b_…  for cloud sandboxes" />
           </div>
         </div>
 
