@@ -1,0 +1,14 @@
+{
+  "name": "WorkspaceAlberta",
+  "install": "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; export PATH=\"$(dirname \"$(nvm which default)\"):$PATH\"; pnpm install --frozen-lockfile",
+  "terminals": [
+    {
+      "name": "harness-server",
+      "command": "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; export PATH=\"$(dirname \"$(nvm which default)\"):$PATH\"; pnpm dev:server"
+    },
+    {
+      "name": "vite",
+      "command": "export NVM_DIR=\"$HOME/.nvm\"; [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"; export PATH=\"$(dirname \"$(nvm which default)\"):$PATH\"; pnpm dev"
+    }
+  ]
+}
