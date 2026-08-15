@@ -1,7 +1,7 @@
-// Hugging Face driver — OpenAI-compatible chat/completions API with SSE streaming.
-// Uses Hugging Face Inference Providers (router.huggingface.co) by default,
-// supporting open-source models like GLM, Llama, Mistral, Qwen, and more.
-// EU-pinnable: operators can point the base URL at dedicated inference endpoints.
+// DeepSeek driver — official paid API (OpenAI-compatible chat/completions
+// with SSE streaming). Same transcript-replay shape as grok.ts / huggingface.ts.
+// Official model ids (2026): deepseek-v4-pro (flagship) and deepseek-v4-flash.
+// There is no "deepseek-pro" or "deepseek-chat" slug on the current API.
 import type {
   DriverCreateInput,
   ProviderDriver,
@@ -15,61 +15,45 @@ import { newEventId, newId } from "../contracts.ts";
 import { appendNative } from "./native.ts";
 import { openaiComplete, runOpenAITurn, type ChatMessage } from "./openaiCompat.ts";
 
-const DRIVER_KIND = "huggingface";
-const DEFAULT_URL = "https://router.huggingface.co/v1";
+const DRIVER_KIND = "deepseek";
+const DEFAULT_URL = "https://api.deepseek.com";
 
-// Curated open-source models available on Hugging Face Inference Providers.
-// Default is GLM-4.6 — verified live on router.huggingface.co (zai-org, novita,
-// featherless-ai, deepinfra). GLM-4.7 is also on the router; keep Llama/Qwen/etc.
-export const HF_DEFAULT_MODEL = "zai-org/GLM-4.6";
 const MODELS = {
-  default: HF_DEFAULT_MODEL,
+  default: "deepseek-v4-pro",
   options: [
-    { id: "zai-org/GLM-4.6", label: "GLM 4.6" },
-    { id: "zai-org/GLM-4.7", label: "GLM 4.7" },
-    { id: "meta-llama/Llama-3.3-70B-Instruct", label: "Llama 3.3 70B" },
-    { id: "meta-llama/Llama-3.1-8B-Instruct", label: "Llama 3.1 8B" },
-    { id: "Qwen/Qwen2.5-72B-Instruct", label: "Qwen 2.5 72B" },
-    { id: "Qwen/Qwen2.5-7B-Instruct", label: "Qwen 2.5 7B" },
-    { id: "mistralai/Mistral-7B-Instruct-v0.3", label: "Mistral 7B v0.3" },
-    { id: "mistralai/Mixtral-8x7B-Instruct-v0.1", label: "Mixtral 8x7B" },
-    { id: "google/gemma-2-27b-it", label: "Gemma 2 27B" },
-    { id: "google/gemma-2-9b-it", label: "Gemma 2 9B" },
-    { id: "microsoft/Phi-3.5-mini-instruct", label: "Phi 3.5 Mini" },
+    { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+    { id: "deepseek-v4-flash", label: "DeepSeek V4 Flash" },
   ],
 };
 
-export interface HuggingFaceConfig {
+export interface DeepSeekConfig {
   url: string;
   /** resolved at create-time from instance environment / app config */
   apiKeyEnv: string;
 }
 
-function decodeConfig(raw: unknown): HuggingFaceConfig {
+function decodeConfig(raw: unknown): DeepSeekConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
     url: typeof o.url === "string" ? o.url : DEFAULT_URL,
-    apiKeyEnv: typeof o.apiKeyEnv === "string" ? o.apiKeyEnv : "HF_TOKEN",
+    apiKeyEnv: typeof o.apiKeyEnv === "string" ? o.apiKeyEnv : "DEEPSEEK_API_KEY",
   };
 }
 
-export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
+export const DeepSeekDriver: ProviderDriver<DeepSeekConfig> = {
   driverKind: DRIVER_KIND,
-  metadata: { displayName: "Hugging Face", supportsMultipleInstances: true },
+  metadata: { displayName: "DeepSeek", supportsMultipleInstances: true },
   models: MODELS,
   decodeConfig,
   defaultConfig: () => decodeConfig({}),
 
-  async create(input: DriverCreateInput<HuggingFaceConfig>): Promise<ProviderInstance> {
+  async create(input: DriverCreateInput<DeepSeekConfig>): Promise<ProviderInstance> {
     const { instanceId, config } = input;
-    // Check both the configured env var name AND common alternatives
     const apiKey =
       input.environment[config.apiKeyEnv] ??
       process.env[config.apiKeyEnv] ??
-      input.environment.HF_TOKEN ??
-      process.env.HF_TOKEN ??
-      input.environment.HUGGINGFACE_TOKEN ??
-      process.env.HUGGINGFACE_TOKEN ??
+      input.environment.DEEPSEEK_API_KEY ??
+      process.env.DEEPSEEK_API_KEY ??
       "";
     const listeners = new Set<RuntimeEventListener>();
     const active = new Map<string, { abort: AbortController; turnId: string }>();
@@ -87,7 +71,7 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
 
     const sendTurn = async (turn: SendTurnInput) => {
       const { threadId } = turn;
-      if (!apiKey) throw new Error(`no Hugging Face token — set HF_TOKEN or add hf.key to config.json`);
+      if (!apiKey) throw new Error(`no DeepSeek key — set ${config.apiKeyEnv} or config.json deepseek.key`);
       if (active.has(threadId)) throw new Error("a turn is already running on this thread");
       const turnId = newId();
       const abort = new AbortController();
@@ -103,7 +87,7 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
       ];
       appendNative(threadId, {
         dir: "out",
-        source: "hf.chat.completions",
+        source: "deepseek.chat.completions",
         msg: { model: turn.model, messages, composio: Boolean(turn.integrations?.composio?.key) },
       });
 
@@ -125,10 +109,9 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
               emit({ ...base(threadId, turnId), type: "item.started", itemType: "tool", itemId: id, title: name }),
             onToolDone: (id, ok) =>
               emit({ ...base(threadId, turnId), type: "item.completed", itemType: "tool", itemId: id, ok }),
-            errorPrefix: "Hugging Face",
-            extraBody: { max_tokens: 4096 },
+            errorPrefix: "DeepSeek",
           });
-          appendNative(threadId, { dir: "in", source: "hf.chat.completions", msg: { text, usage } });
+          appendNative(threadId, { dir: "in", source: "deepseek.chat.completions", msg: { text, usage } });
           if (text.trim()) {
             emit({ ...base(threadId, turnId), type: "item.completed", itemType: "assistant_text", text });
           }
@@ -160,7 +143,7 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
       if (!apiKey) {
         return {
           state: "unavailable",
-          reason: `no Hugging Face token — add {"hf":{"key":"hf_…"}} to ~/.config/workspacealberta/config.json or set HF_TOKEN`,
+          reason: `no DeepSeek API key — add {"deepseek":{"key":"sk-…"}} to config.json or set ${config.apiKeyEnv}`,
         };
       }
       return { state: "available", authenticated: true, version: null };
@@ -179,7 +162,7 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
         sendTurn,
         interruptTurn: async (threadId) => active.get(threadId)?.abort.abort(),
         respondToRequest: async () => {
-          throw new Error("huggingface driver has no pending asks");
+          throw new Error("deepseek driver has no pending asks");
         },
         hasSession: (threadId) => active.has(threadId),
         stopAll: async () => {
@@ -194,11 +177,10 @@ export const HuggingFaceDriver: ProviderDriver<HuggingFaceConfig> = {
         const { text } = await openaiComplete({
           url: `${config.url}/chat/completions`,
           apiKey,
-          model: "meta-llama/Llama-3.1-8B-Instruct",
+          model: "deepseek-v4-flash",
           messages: [{ role: "user", content: prompt }],
           stream: false,
-          errorPrefix: "Hugging Face",
-          extraBody: { max_tokens: 4096 },
+          errorPrefix: "DeepSeek",
         });
         return text;
       },

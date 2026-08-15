@@ -1,5 +1,5 @@
 // Config + data dirs. One file, ~/.workspacealberta/config.json, env fallbacks:
-//   { "hf": {"key":"hf_…"}, "xai": {"key":"xai-…"}, "composio": {"key":"ck_…"}, "box": {"token":"…"},
+//   { "hf": {"key":"hf_…"}, "deepseek": {"key":"sk-…"}, "xai": {"key":"xai-…"}, "composio": {"key":"ck_…"},
 //     "instances": { "<instanceId>": {"driver":"huggingface", …} } }
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { homedir, platform } from "node:os";
@@ -58,8 +58,13 @@ export function loadConfig() {
     // Environment variable fallbacks (WA_* preferred, OMB_*/OGB_* for compat)
     cfg.hf = { key: process.env.HF_TOKEN ?? process.env.HUGGINGFACE_TOKEN, ...cfg.hf };
     cfg.xai = { key: process.env.XAI_API_KEY, ...cfg.xai };
+    cfg.deepseek = {
+        key: process.env.DEEPSEEK_API_KEY,
+        url: process.env.DEEPSEEK_BASE_URL,
+        ...cfg.deepseek,
+    };
     cfg.composio = { key: process.env.COMPOSIO_KEY, ...cfg.composio };
-    cfg.box = { token: process.env.BOX_TOKEN, ...cfg.box };
+    cfg.e2b = { apiKey: process.env.E2B_API_KEY, ...cfg.e2b };
     return cfg;
 }
 /** Merge a partial config into ~/.workspacealberta/config.json (secrets never
@@ -73,7 +78,7 @@ export function saveConfig(patch) {
     catch {
         /* first write */
     }
-    for (const key of ["hf", "xai", "composio", "box"]) {
+    for (const key of ["hf", "xai", "deepseek", "composio", "e2b"]) {
         if (patch[key] && typeof patch[key] === "object") {
             disk[key] = { ...disk[key], ...patch[key] };
         }
@@ -81,27 +86,28 @@ export function saveConfig(patch) {
     mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(p, JSON.stringify(disk, null, 2));
 }
-// Default fleet: WorkspaceAlberta prefers Hugging Face as the primary provider
-// for open-source, EU-pinnable inference. Claude/Codex drivers remain available
-// for power users with those CLIs installed.
+// Default fleet matches upstream: Claude/Codex first (tool mesh), then
+// optional OpenAI-compatible inference (Hugging Face, DeepSeek).
 // Config-file keys are injected as per-instance environment so drivers
 // see them without needing real process env vars.
 export function instanceConfigs(cfg) {
     const map = cfg.instances && Object.keys(cfg.instances).length
         ? cfg.instances
         : {
-            // Hugging Face is the default for WorkspaceAlberta appliance
-            huggingface: { driver: "huggingface" },
-            // CLI-based agents remain available for those who have them
             claude: { driver: "claudeAgent" },
             codex: { driver: "codex" },
-            computer: { driver: "boxAgent" },
+            huggingface: { driver: "huggingface" },
+            deepseek: {
+                driver: "deepseek",
+                ...(cfg.deepseek?.url ? { config: { url: cfg.deepseek.url } } : {}),
+            },
         };
     for (const entry of Object.values(map)) {
         entry.environment = {
             ...(cfg.hf?.key ? { HF_TOKEN: cfg.hf.key } : {}),
             ...(cfg.xai?.key ? { XAI_API_KEY: cfg.xai.key } : {}),
-            ...(cfg.box?.token ? { BOX_TOKEN: cfg.box.token } : {}),
+            ...(cfg.deepseek?.key ? { DEEPSEEK_API_KEY: cfg.deepseek.key } : {}),
+            ...(cfg.e2b?.apiKey ? { E2B_API_KEY: cfg.e2b.apiKey } : {}),
             ...entry.environment,
         };
     }

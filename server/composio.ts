@@ -10,6 +10,55 @@ import type { AppConfig } from "./config.ts";
 const CONNECT_URL = "https://connect.composio.dev/mcp";
 const BACKEND_URL = "https://backend.composio.dev/api/v3";
 
+export interface ComposioAuth {
+  key: string;
+  url?: string;
+}
+
+export interface OpenAIFunctionTool {
+  type: "function";
+  function: { name: string; description?: string; parameters?: Record<string, unknown> };
+}
+
+/** The 7 Composio Connect meta-tools the OpenAI-compatible drivers expose. */
+export const COMPOSIO_META_TOOLS = [
+  "COMPOSIO_SEARCH_TOOLS",
+  "COMPOSIO_GET_TOOL_SCHEMAS",
+  "COMPOSIO_MULTI_EXECUTE_TOOL",
+  "COMPOSIO_MANAGE_CONNECTIONS",
+  "COMPOSIO_WAIT_FOR_CONNECTIONS",
+  "COMPOSIO_REMOTE_WORKBENCH",
+  "COMPOSIO_REMOTE_BASH_TOOL",
+] as const;
+
+export const COMPOSIO_SYSTEM_HINT =
+  "You have Composio Connect tools for Gmail, Google Drive, Slack, GitHub, Calendar, and other connected apps. " +
+  "When the user mentions any external app or data, call COMPOSIO_SEARCH_TOOLS first, then execute via COMPOSIO_MULTI_EXECUTE_TOOL. " +
+  "Never claim you lack access before searching tools and checking connections. " +
+  "If a toolkit is not connected, use COMPOSIO_MANAGE_CONNECTIONS and show the user the auth link as markdown.";
+
+const FALLBACK_DESCRIPTIONS: Record<(typeof COMPOSIO_META_TOOLS)[number], string> = {
+  COMPOSIO_SEARCH_TOOLS:
+    "Discover tools for Gmail, Google Drive, Slack, GitHub, and 500+ apps. Always call this first when the user mentions an external app. Never say you lack access before calling it.",
+  COMPOSIO_GET_TOOL_SCHEMAS: "Retrieve input schemas for tool slugs returned by COMPOSIO_SEARCH_TOOLS. Never invent slugs.",
+  COMPOSIO_MULTI_EXECUTE_TOOL: "Execute one or more discovered toolkit tools (Gmail, Drive, Slack, GitHub, …) in parallel.",
+  COMPOSIO_MANAGE_CONNECTIONS: "Add, list, rename, or remove app connections. Show any returned auth URL as a markdown link.",
+  COMPOSIO_WAIT_FOR_CONNECTIONS: "Wait until the user finishes connecting an app after COMPOSIO_MANAGE_CONNECTIONS.",
+  COMPOSIO_REMOTE_WORKBENCH: "Run Python in a remote sandbox for large or bulk Composio tool results.",
+  COMPOSIO_REMOTE_BASH_TOOL: "Run bash in a remote sandbox for file or data processing of large tool results.",
+};
+
+export function fallbackComposioOpenAITools(): OpenAIFunctionTool[] {
+  return COMPOSIO_META_TOOLS.map((name) => ({
+    type: "function" as const,
+    function: {
+      name,
+      description: FALLBACK_DESCRIPTIONS[name],
+      parameters: { type: "object", additionalProperties: true },
+    },
+  }));
+}
+
 function parseMcpResponse(text: string) {
   // Streamable-HTTP servers answer JSON or SSE (`data: {...}` lines).
   const line = text.startsWith("{")
@@ -27,22 +76,79 @@ function parseMcpResponse(text: string) {
   }
 }
 
-export async function composioTool(cfg: AppConfig, name: string, args: unknown) {
-  if (!cfg.composio?.key) {
+function timeoutForTool(name: string): number {
+  if (name === "COMPOSIO_WAIT_FOR_CONNECTIONS") return 120_000;
+  if (name === "COMPOSIO_REMOTE_BASH_TOOL" || name === "COMPOSIO_REMOTE_WORKBENCH") return 180_000;
+  return 30_000;
+}
+
+export async function composioRpc(
+  auth: ComposioAuth,
+  method: string,
+  params: Record<string, unknown>,
+  timeoutMs = 30_000,
+) {
+  if (!auth.key) {
     throw new Error('no Composio key configured — add {"composio":{"key":"ck_…"}} to ~/.config/workspacealberta/config.json');
   }
-  const res = await fetch(cfg.composio.url || CONNECT_URL, {
+  const res = await fetch(auth.url || CONNECT_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
-      "x-consumer-api-key": cfg.composio.key,
+      "x-consumer-api-key": auth.key,
     },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
-    signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`Composio MCP: HTTP ${res.status}`);
   return parseMcpResponse(await res.text());
+}
+
+export async function composioCall(auth: ComposioAuth, name: string, args: unknown) {
+  return composioRpc(auth, "tools/call", { name, arguments: args ?? {} }, timeoutForTool(name));
+}
+
+export async function composioTool(cfg: AppConfig, name: string, args: unknown) {
+  if (!cfg.composio?.key) {
+    throw new Error('no Composio key configured — add {"composio":{"key":"ck_…"}} to ~/.config/workspacealberta/config.json');
+  }
+  return composioCall({ key: cfg.composio.key, url: cfg.composio.url }, name, args);
+}
+
+function mcpToOpenAI(tool: { name?: string; description?: string; inputSchema?: Record<string, unknown> }): OpenAIFunctionTool | null {
+  if (!tool.name) return null;
+  return {
+    type: "function",
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.inputSchema ?? { type: "object", additionalProperties: true },
+    },
+  };
+}
+
+/** OpenAI `tools` array for Connect meta-tools. Prefers live MCP tools/list. */
+export async function composioOpenAITools(auth: ComposioAuth): Promise<OpenAIFunctionTool[]> {
+  const fallback = fallbackComposioOpenAITools();
+  try {
+    const result = await composioRpc(auth, "tools/list", {}, 15_000);
+    const listed: unknown[] = Array.isArray(result?.tools) ? result.tools : [];
+    const converted: OpenAIFunctionTool[] = listed
+      .filter((t): t is { name: string; description?: string; inputSchema?: Record<string, unknown> } =>
+        typeof t === "object" && t !== null && typeof (t as { name?: unknown }).name === "string" && (t as { name: string }).name.startsWith("COMPOSIO_"),
+      )
+      .map(mcpToOpenAI)
+      .filter((t): t is OpenAIFunctionTool => t !== null);
+    if (!converted.length) return fallback;
+    const byName = new Map<string, OpenAIFunctionTool>(converted.map((t) => [t.function.name, t]));
+    for (const fb of fallback) {
+      if (!byName.has(fb.function.name)) byName.set(fb.function.name, fb);
+    }
+    return [...byName.values()];
+  } catch {
+    return fallback;
+  }
 }
 
 /** Connection status per service slug: { slack: { connected, status } }. */

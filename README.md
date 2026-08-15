@@ -4,8 +4,9 @@
 
 **Setup + Linux/Pi chat app for CEO productivity terminals**
 
-A team of AI bots in a messaging interface, powered by open-source models from Hugging Face.
-Built for Raspberry Pi desk terminals and Linux workstations.
+A team of AI bots in a messaging interface. The tool mesh (Gmail, Drive, Slack, GitHub)
+runs through Claude Code or Codex CLI, matching upstream OpenMausBot. Hugging Face is
+optional inference. Built for Raspberry Pi desk terminals and Linux workstations.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
@@ -48,8 +49,9 @@ contacts, watch them work, approve what matters.
 
 **Key differences from other AI chat apps:**
 
-- **Open-source models first** — Powered by Hugging Face Inference Providers (Llama, Mistral, Qwen, etc.)
-  with EU-pinnable endpoints. No vendor lock-in.
+- **CLI engines for tools** — Composio Connect is injected as MCP into Claude Code and Codex CLI
+  (same as upstream OpenMausBot). Install one of those CLIs for Gmail / Drive / Slack / GitHub.
+  Hugging Face (GLM, Llama, Qwen, …) is optional text inference, not the default brain.
 - **Linux-first** — Primary target is Raspberry Pi 5 16GB desk terminals and Linux workstations.
   macOS support included but secondary.
 - **Local harness** — One small server on `127.0.0.1` runs all agent processes. Your transcripts,
@@ -104,23 +106,46 @@ sudo apt-get install -f  # Fix any missing dependencies
 
 **3. Launch WorkspaceAlberta** from your applications menu.
 
-**4. Configure Hugging Face:**
+**4. Install a CLI engine (required for the tool mesh):**
 
-Open **App Settings** (gear icon in sidebar) and paste your [HF token](https://huggingface.co/settings/tokens).
-That's it — your bots now run on open-source models.
+```sh
+npm i -g @anthropic-ai/claude-code   # default — run `claude` once to sign in
+# or
+npm i -g @openai/codex
+```
 
-### From Source
+New bots prefer Claude, then Codex, then Hugging Face. Paste a Composio Connect key (`ck_…`) in App Settings — Claude/Codex receive it as MCP. Hugging Face is optional (GLM 4.6 and other router models).
+
+### From Source (Linux / Raspberry Pi)
+
+No packaged `.deb` required. From a clone:
 
 ```sh
 git clone https://github.com/HarleyCoops/workspaceAlbertaSetup && cd workspaceAlbertaSetup
 pnpm install
-
-pnpm dev:server    # harness server → 127.0.0.1:8799
-pnpm dev           # app → http://127.0.0.1:5199
-pnpm dev:desktop   # or the Electron shell
+pnpm start
 ```
 
-Requirements: **Node 20+**, **pnpm**
+`pnpm start` launches the harness server, Vite (`127.0.0.1:5199`), and Electron together. It waits for Vite (and the server) before opening the window — a black Electron window usually means Vite is not up yet.
+
+On Linux/Pi the start path sets `ELECTRON_DISABLE_SANDBOX=1` and passes `--no-sandbox` (chrome-sandbox SUID errors). It also sets `ELECTRON_DISABLE_GPU=1` as a GPU fallback; unset that env var if your desktop GPU works.
+
+If **pnpm 11** blocks `electron` / `esbuild` postinstall scripts:
+
+```sh
+pnpm config set dangerouslyAllowAllBuilds true
+pnpm install
+```
+
+Requirements: **Node 20+**, **pnpm**. Live TypeScript (`pnpm start` / `pnpm dev:server`) needs **Node 22+**. On Node 20 run `pnpm build:server` first — `pnpm start` will use `dist-server/`.
+
+Individual processes (if you need them separately):
+
+```sh
+pnpm dev:server    # harness server → 127.0.0.1:8799
+pnpm dev           # app → http://127.0.0.1:5199
+pnpm dev:desktop   # Electron shell (expects Vite already on 5199)
+```
 
 ### Building Packages
 
@@ -141,28 +166,35 @@ pnpm package:mac
 
 ## Configuration
 
-### Hugging Face (Default Provider)
+### Claude / Codex (default — required for the tool mesh)
 
-WorkspaceAlberta uses Hugging Face Inference Providers as the default AI backend:
-
-1. Get a token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-2. Paste it in App Settings → "Hugging Face token"
-3. Start chatting
-
-**Custom endpoints:** For EU compliance or dedicated inference, set a custom base URL:
-- App Settings → "Hugging Face base URL"
-- Or `HF_BASE_URL` environment variable
-
-### Optional: CLI Agents
-
-Power users can also enable Claude Code and Codex CLIs:
+Upstream OpenMausBot has no Hugging Face driver. Tools are a property of CLI/ACP engines:
+Composio Connect is passed to Claude and Codex as streamable HTTP MCP
+(`connect.composio.dev` + `x-consumer-api-key`). New bots follow the same preference:
+**Claude → Codex → Hugging Face**.
 
 | Provider | Install | Notes |
 |----------|---------|-------|
-| Claude Code | `npm i -g @anthropic-ai/claude-code` | Run `claude` once to sign in |
+| Claude Code (default) | `npm i -g @anthropic-ai/claude-code` | Run `claude` once to sign in |
 | Codex | `npm i -g @openai/codex` | OpenAI Codex CLI |
 
 These appear automatically in the model picker when installed.
+
+### Optional: Hugging Face
+
+Open-source inference via Hugging Face Inference Providers. Catalog default is **GLM 4.6**
+(`zai-org/GLM-4.6` on the router; GLM 4.7, Llama, Qwen, etc. remain in the picker).
+HF is optional text inference — it is not the boot default.
+
+1. Get a token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+2. Paste it in App Settings → "Hugging Face token"
+
+**Custom endpoints:** App Settings → "Hugging Face base URL", or `HF_BASE_URL`.
+
+### Optional: DeepSeek
+
+Paid OpenAI-compatible fallback (`deepseek-v4-pro` / `deepseek-v4-flash`). Paste a key in
+App Settings, or set `DEEPSEEK_API_KEY`. Not the boot default.
 
 ### Optional: Connected Apps
 
@@ -170,7 +202,8 @@ Paste credentials in **App Settings** to unlock additional features:
 
 | Key | Unlocks |
 |-----|---------|
-| Composio Connect key (`ck_…`) | Gmail, Slack, GitHub, and 500+ app integrations |
+| Composio Connect key (`ck_…`) | Gmail, Drive, Slack, GitHub via Claude/Codex MCP (required path for the tool mesh) |
+| DeepSeek API key | Optional paid inference (`deepseek-v4-pro`) |
 | e2b API key (`e2b_…`) | Cloud sandboxes for your bots (isolated Linux environments) |
 
 ---
@@ -210,7 +243,8 @@ WorkspaceAlberta is two processes:
                             │ HTTP + SSE
 ┌───────────────────────────▼─────────────────────────────────────┐
 │  Harness Server (127.0.0.1:8799)                                │
-│  - Driver registry: HF, Claude CLI, Codex CLI                   │
+│  - Driver registry: Claude CLI + Codex CLI (default / tools),   │
+│    optional HF + DeepSeek inference                             │
 │  - Event bus normalizes all provider protocols                  │
 │  - Permission broker for tool approvals                         │
 │  - Transcript storage in ~/.config/workspacealberta             │
@@ -253,10 +287,13 @@ Contents:
 |----------|---------|---------|
 | `HF_TOKEN` | Hugging Face API token | — |
 | `HF_BASE_URL` | Custom HF inference endpoint | `https://router.huggingface.co/v1` |
+| `DEEPSEEK_API_KEY` | DeepSeek API key (optional fallback) | — |
+| `DEEPSEEK_BASE_URL` | DeepSeek API base URL | `https://api.deepseek.com` |
 | `WA_PORT` | Server port | `8799` |
 | `WA_ANALYTICS` | Opt-in to telemetry (`1` to enable) | disabled |
 | `E2B_API_KEY` | e2b sandbox API key (optional) | — |
 | `COMPOSIO_KEY` | Composio Connect key | — |
+| `ELECTRON_DISABLE_GPU` | Set by `pnpm start` on Linux; unset to use GPU | `1` on Linux start |
 
 ---
 
@@ -277,6 +314,6 @@ deliberately small. See the existing drivers in [`server/drivers/`](server/drive
 
 <div align="center">
 
-**WorkspaceAlberta** — AI bots for operators, powered by open-source models.
+**WorkspaceAlberta** — AI bots for operators. Tool mesh via Claude or Codex CLI.
 
 </div>

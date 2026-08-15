@@ -6,7 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
 
-export type ConfigSection = "hf" | "hfUrl" | "composio" | "composioApi" | "e2b";
+export type ConfigSection = "hf" | "hfUrl" | "deepseek" | "composio" | "composioApi" | "e2b";
 
 const SECTIONS: Record<
   ConfigSection,
@@ -14,6 +14,7 @@ const SECTIONS: Record<
 > = {
   hf: { body: (v) => ({ hf: { key: v } }), flag: (c) => c.hf?.configured ?? false },
   hfUrl: { body: (v) => ({ hf: { url: v } }), flag: () => true },
+  deepseek: { body: (v) => ({ deepseek: { key: v } }), flag: (c) => c.deepseek?.configured ?? false },
   composio: { body: (v) => ({ composio: { key: v } }), flag: (c) => c.composio.configured },
   composioApi: {
     body: (v) => ({ composio: { apiKey: v } }),

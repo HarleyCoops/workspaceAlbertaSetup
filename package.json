@@ -13,8 +13,10 @@
   },
   "homepage": "https://github.com/HarleyCoops/workspaceAlbertaSetup#readme",
   "scripts": {
+    "start": "node scripts/start-desktop.mjs",
+    "verify": "node --experimental-strip-types scripts/verify.mjs",
     "dev": "vite",
-    "dev:server": "node server/index.ts",
+    "dev:server": "node --experimental-strip-types server/index.ts",
     "dev:desktop": "electron .",
     "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "typecheck": "tsc -b && tsc -p tsconfig.server.json",

@@ -1,6 +1,6 @@
 // App-level settings, in the right-side slot: credentials shared by all
 // bots. Per-bot settings (name, persona, model, computer) live in
-// SettingsPanel; contextual Box-token entry also stays in ComputerPanel.
+// SettingsPanel; e2b sandbox key entry also stays in ComputerPanel.
 import { X } from "lucide-react";
 import { useStore } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
@@ -22,11 +22,11 @@ export function AppSettingsPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-5">
-        {/* Hugging Face — Primary provider for WorkspaceAlberta */}
+        {/* Hugging Face — optional inference (Claude/Codex are the default engines) */}
         <div className="mt-2 rounded-xl bg-card p-4">
           <div className="text-[15px] font-medium text-ink">Hugging Face</div>
           <div className="mt-0.5 text-[13px] text-ink-secondary">
-            Open-source models from Hugging Face Inference Providers. Get your token at{" "}
+            Optional open-source inference (GLM 4.6 and other router models). Get your token at{" "}
             <a
               href="https://huggingface.co/settings/tokens"
               target="_blank"
@@ -44,6 +44,16 @@ export function AppSettingsPanel() {
               placeholder="https://router.huggingface.co/v1"
               type="text"
             />
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-card p-4">
+          <div className="text-[15px] font-medium text-ink">DeepSeek</div>
+          <div className="mt-0.5 text-[13px] text-ink-secondary">
+            Optional paid inference (DeepSeek V4 Pro / Flash). Not the boot default — Claude/Codex are.
+          </div>
+          <div className="mt-4 flex flex-col gap-4">
+            <ApiKeyRow section="deepseek" label="DeepSeek API key" placeholder="sk-…" />
           </div>
         </div>
 
@@ -68,7 +78,7 @@ export function AppSettingsPanel() {
         <div className="mt-4 rounded-xl bg-card p-4">
           <div className="text-[15px] font-medium text-ink">About WorkspaceAlberta</div>
           <div className="mt-2 text-[13px] text-ink-secondary leading-relaxed">
-            Linux-first CEO productivity chat app with AI bots powered by open-source models.
+            Linux-first CEO productivity chat app. Tool mesh via Claude or Codex CLI; Hugging Face is optional inference.
             <br /><br />
             Based on{" "}
             <a

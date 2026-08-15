@@ -20,8 +20,9 @@ import { newEventId, newId } from "../contracts.js";
 import { appendNative } from "./native.js";
 const DRIVER_KIND = "claudeAgent";
 // model catalog ported from upstream packages/contracts/src/model.ts
+export const CLAUDE_DEFAULT_MODEL = "claude-sonnet-5";
 const MODELS = {
-    default: "claude-sonnet-5",
+    default: CLAUDE_DEFAULT_MODEL,
     options: [
         { id: "claude-fable-5", label: "Claude Fable 5" },
         { id: "claude-opus-5", label: "Claude Opus 5" },
@@ -214,17 +215,17 @@ export const ClaudeDriver = {
                 };
                 allowed.push("mcp__composio");
             }
-            if (turn.integrations?.computer) {
-                mcpServers.computer = {
+            if (turn.integrations?.sandbox) {
+                mcpServers.sandbox = {
                     command: process.execPath,
                     args: [PROXY_PATH],
                     env: {
                         ...NODE_ENV_FLAG,
-                        OGB_BOX_ID: turn.integrations.computer.boxId,
-                        OGB_BOX_TOKEN: turn.integrations.computer.token,
+                        OGB_SANDBOX_ID: turn.integrations.sandbox.sandboxId,
+                        E2B_API_KEY: turn.integrations.sandbox.apiKey,
                     },
                 };
-                allowed.push("mcp__computer");
+                allowed.push("mcp__sandbox");
             }
             else if (turn.integrations?.localComputer) {
                 // this Mac, via the Electron-owned cua-driver daemon (spawn config
