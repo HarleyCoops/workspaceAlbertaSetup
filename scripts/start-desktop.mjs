@@ -3,6 +3,7 @@
 // Waits for Vite (and the harness) before opening the window so unpackaged
 // Electron does not load a black 127.0.0.1:5199 page.
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -45,6 +46,17 @@ export async function waitForHttp(url, { timeoutMs = 60_000, intervalMs = 250, r
   }
   if (required) throw new Error(`Timed out waiting for ${url}${lastError ? ` (${lastError})` : ""}`);
   return false;
+}
+
+export function serverLaunch(nodeVersion = process.versions.node, compiled = join(root, "dist-server", "index.js")) {
+  const major = Number(String(nodeVersion).split(".")[0]);
+  if (major >= 22) {
+    return { command: process.execPath, args: ["--experimental-strip-types", "server/index.ts"] };
+  }
+  if (existsSync(compiled)) {
+    return { command: process.execPath, args: [compiled] };
+  }
+  return { command: "pnpm", args: ["dev:server"] };
 }
 
 function spawnChild(command, args, env) {
@@ -100,8 +112,9 @@ async function main() {
   process.on("SIGINT", () => shutdown(0));
   process.on("SIGTERM", () => shutdown(0));
 
-  console.log("[start] harness server → 127.0.0.1:8799");
-  children.push(spawnChild("pnpm", ["dev:server"], env));
+  const server = serverLaunch();
+  console.log(`[start] harness server → 127.0.0.1:8799 (${server.args.join(" ")})`);
+  children.push(spawnChild(server.command, server.args, env));
   console.log("[start] Vite UI → 127.0.0.1:5199");
   children.push(spawnChild("pnpm", ["dev"], env));
 

@@ -130,7 +130,7 @@ pnpm config set dangerouslyAllowAllBuilds true
 pnpm install
 ```
 
-Requirements: **Node 20+**, **pnpm**
+Requirements: **Node 20+**, **pnpm**. Live TypeScript (`pnpm start` / `pnpm dev:server`) needs **Node 22+**. On Node 20 run `pnpm build:server` first — `pnpm start` will use `dist-server/`.
 
 Individual processes (if you need them separately):
 

@@ -2,7 +2,7 @@
 // Smoke checks for start-helper env flags + the OpenAI/Composio tool loop.
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { electronArgs, electronEnv, waitForHttp } from "./start-desktop.mjs";
+import { electronArgs, electronEnv, serverLaunch, waitForHttp } from "./start-desktop.mjs";
 import { accumulateToolCallDelta, normalizeToolCalls, runOpenAITurn } from "../server/drivers/openaiCompat.ts";
 import { COMPOSIO_META_TOOLS, fallbackComposioOpenAITools } from "../server/composio.ts";
 
@@ -14,6 +14,11 @@ assert.deepEqual(electronArgs(linuxEnv, "linux"), [".", "--no-sandbox", "--disab
 const macEnv = electronEnv({ PATH: "/usr/bin" }, "darwin");
 assert.equal(macEnv.ELECTRON_DISABLE_SANDBOX, undefined);
 assert.deepEqual(electronArgs(macEnv, "darwin"), ["."]);
+
+const launch22 = serverLaunch("22.14.0", "/tmp/does-not-exist.js");
+assert.deepEqual(launch22.args, ["--experimental-strip-types", "server/index.ts"]);
+const launch20 = serverLaunch("20.19.0", "/workspace/dist-server/index.js");
+assert.ok(launch20.args[0].endsWith("dist-server/index.js"));
 
 const names = fallbackComposioOpenAITools().map((t) => t.function.name);
 for (const name of COMPOSIO_META_TOOLS) assert.ok(names.includes(name), name);
