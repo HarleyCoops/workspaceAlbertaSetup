@@ -105,9 +105,8 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   writeFileSync(p, JSON.stringify(disk, null, 2));
 }
 
-// Default fleet: WorkspaceAlberta prefers Hugging Face as the primary provider
-// for open-source, EU-pinnable inference. Claude/Codex drivers remain available
-// for power users with those CLIs installed.
+// Default fleet matches upstream: Claude/Codex first (tool mesh), then
+// optional OpenAI-compatible inference (Hugging Face, DeepSeek).
 // Config-file keys are injected as per-instance environment so drivers
 // see them without needing real process env vars.
 export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
@@ -115,15 +114,13 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
     cfg.instances && Object.keys(cfg.instances).length
       ? cfg.instances
       : {
-          // Hugging Face is the default for WorkspaceAlberta appliance
+          claude: { driver: "claudeAgent" },
+          codex: { driver: "codex" },
           huggingface: { driver: "huggingface" },
           deepseek: {
             driver: "deepseek",
             ...(cfg.deepseek?.url ? { config: { url: cfg.deepseek.url } } : {}),
           },
-          // CLI-based agents remain available for those who have them
-          claude: { driver: "claudeAgent" },
-          codex: { driver: "codex" },
         };
   for (const entry of Object.values(map)) {
     entry.environment = {

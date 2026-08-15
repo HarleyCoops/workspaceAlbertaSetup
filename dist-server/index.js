@@ -9,7 +9,7 @@ import * as e2b from "./e2b.js";
 import * as composio from "./composio.js";
 import { ensureDirs, instanceConfigs, loadConfig, saveConfig, EVENTS_DIR, NATIVE_DIR } from "./config.js";
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.js";
-import { HF_DEFAULT_MODEL } from "./drivers/huggingface.js";
+import { CLAUDE_DEFAULT_MODEL } from "./drivers/claude.js";
 import { EventBus } from "./harness/bus.js";
 import { ProviderRegistry } from "./harness/registry.js";
 import { Store } from "./store.js";
@@ -31,18 +31,19 @@ const registry = new ProviderRegistry(BUILT_IN_DRIVERS);
 await registry.load(instanceConfigs(cfg));
 const bus = new EventBus();
 bus.attach(registry.instances());
-// default selection for new bots: first available instance, HF preferred for WorkspaceAlberta
+// default selection matches upstream OpenMausBot: CLI engines first.
+// Tool mesh (Composio MCP) is a property of Claude/Codex, not raw chat APIs.
 async function defaultSelection() {
     const described = await registry.describe();
     const available = described.filter((d) => d.snapshot.state === "available");
-    // Prefer Hugging Face (WorkspaceAlberta default), then Claude, then first available
-    const pick = available.find((d) => d.driverKind === "huggingface") ??
-        available.find((d) => d.driverKind === "claudeAgent") ??
+    const pick = available.find((d) => d.driverKind === "claudeAgent") ??
+        available.find((d) => d.driverKind === "codex") ??
+        available.find((d) => d.driverKind === "huggingface") ??
         available[0] ??
         described[0];
-    return { instanceId: pick?.instanceId ?? "huggingface", model: pick?.models.default || HF_DEFAULT_MODEL };
+    return { instanceId: pick?.instanceId ?? "claude", model: pick?.models.default || CLAUDE_DEFAULT_MODEL };
 }
-let bootSelection = { instanceId: "huggingface", model: HF_DEFAULT_MODEL };
+let bootSelection = { instanceId: "claude", model: CLAUDE_DEFAULT_MODEL };
 const store = new Store(() => bootSelection);
 bootSelection = await defaultSelection();
 store.seedIfEmpty();

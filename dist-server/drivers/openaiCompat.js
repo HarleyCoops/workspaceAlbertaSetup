@@ -1,6 +1,7 @@
 // Shared OpenAI-compatible chat/completions helper + Composio tool loop.
-// Used by Hugging Face (default brain) and DeepSeek so Connect tools work
-// without routing the user to Claude.
+// Used by optional Hugging Face / DeepSeek chat APIs. Upstream tool mesh
+// is still Claude/Codex MCP; this loop is a best-effort extra on raw
+// OpenAI-compatible completions.
 import { COMPOSIO_SYSTEM_HINT, composioCall, composioOpenAITools, } from "../composio.js";
 const MAX_TOOL_ITERS = 8;
 export function accumulateToolCallDelta(acc, deltas) {
