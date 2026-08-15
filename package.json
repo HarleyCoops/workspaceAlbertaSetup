@@ -13,6 +13,7 @@
   },
   "homepage": "https://github.com/HarleyCoops/workspaceAlbertaSetup#readme",
   "scripts": {
+    "start": "node scripts/start-desktop.mjs",
     "dev": "vite",
     "dev:server": "node server/index.ts",
     "dev:desktop": "electron .",
