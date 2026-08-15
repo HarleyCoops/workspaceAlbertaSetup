@@ -249,6 +249,37 @@ ssh support@wa-pi5-acme-edmonton-01
 ssh support@100.x.y.z
 ```
 
+## Dedicated OpenSSH key from Windows
+
+`tailscale ssh christian@wa-pi5-christian-01` (or `support@…`) works from a Windows desktop on the same tailnet. A dedicated ed25519 key is more reliable for unattended commands — Tailscale SSH can prompt or fail when no TTY is available.
+
+On Windows (OpenSSH):
+
+```powershell
+ssh-keygen -t ed25519 -f $HOME\.ssh\wa-pi5-ed25519 -C "wa-pi-unbox"
+Get-Content $HOME\.ssh\wa-pi5-ed25519.pub
+```
+
+On the Pi, append that public-key line to the login user's `~/.ssh/authorized_keys`. Create `~/.ssh` at mode `700` and `authorized_keys` at mode `600` if they do not exist.
+
+Windows `~/.ssh/config` (`C:\Users\<you>\.ssh\config`):
+
+```sshconfig
+Host wa-pi5-christian-01
+  HostName 100.x.x.x
+  User christian
+  IdentityFile ~/.ssh/wa-pi5-ed25519
+  IdentitiesOnly yes
+```
+
+`HostName` is the Pi's Tailscale **100.x** IPv4 from `tailscale ip -4`. `IdentitiesOnly yes` prevents OpenSSH from offering unrelated keys.
+
+```powershell
+ssh wa-pi5-christian-01 hostname
+```
+
+Do not commit private keys or Tailscale auth keys.
+
 ## Standard remote triage
 
 ```bash
