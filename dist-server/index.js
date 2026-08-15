@@ -5,10 +5,11 @@ import { readFileSync, unlinkSync } from "node:fs";
 import { createServer } from "node:http";
 import { homedir } from "node:os";
 import { extname, join } from "node:path";
-import * as box from "./box.js";
+import * as e2b from "./e2b.js";
 import * as composio from "./composio.js";
 import { ensureDirs, instanceConfigs, loadConfig, saveConfig, EVENTS_DIR, NATIVE_DIR } from "./config.js";
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.js";
+import { HF_DEFAULT_MODEL } from "./drivers/huggingface.js";
 import { EventBus } from "./harness/bus.js";
 import { ProviderRegistry } from "./harness/registry.js";
 import { Store } from "./store.js";
@@ -39,9 +40,9 @@ async function defaultSelection() {
         available.find((d) => d.driverKind === "claudeAgent") ??
         available[0] ??
         described[0];
-    return { instanceId: pick?.instanceId ?? "huggingface", model: pick?.models.default || "meta-llama/Llama-3.3-70B-Instruct" };
+    return { instanceId: pick?.instanceId ?? "huggingface", model: pick?.models.default || HF_DEFAULT_MODEL };
 }
-let bootSelection = { instanceId: "huggingface", model: "meta-llama/Llama-3.3-70B-Instruct" };
+let bootSelection = { instanceId: "huggingface", model: HF_DEFAULT_MODEL };
 const store = new Store(() => bootSelection);
 bootSelection = await defaultSelection();
 store.seedIfEmpty();
@@ -153,7 +154,7 @@ bus.subscribe((event) => {
 });
 const screenPollers = new Map();
 function startScreenPoller(botId) {
-    if (screenPollers.has(botId) || !box.boxConfigured(cfg))
+    if (screenPollers.has(botId) || !e2b.e2bConfigured(cfg))
         return;
     let inFlight = false;
     const capture = async () => {
@@ -161,13 +162,13 @@ function startScreenPoller(botId) {
             return;
         inFlight = true;
         try {
-            const { png, format } = await box.screenshotBox(cfg, botId);
+            const { png, format } = await e2b.screenshotSandbox(cfg, botId);
             const frame = { png, mime: format === "jpeg" ? "image/jpeg" : "image/png" };
             entry.last = frame;
             broadcast({ kind: "screen", botId, ...frame });
         }
         catch {
-            /* box asleep or mid-command — try again next tick */
+            /* sandbox paused or headless — try again next tick */
         }
         finally {
             inFlight = false;
@@ -262,21 +263,21 @@ async function startTurn(botId, text) {
             if (cfg.composio?.key)
                 integrations.composio = { key: cfg.composio.key, url: cfg.composio.url };
             const wants = bot.computer; // 'cloud' | 'local' | 'off' | undefined(auto)
-            if (wants !== "off" && wants !== "local" && box.boxConfigured(cfg)) {
-                let b = await box.findBox(cfg, bot.id).catch(() => null);
-                // the Computer driver runs ON the box — provision it on first use
-                if (!b && instance.driverKind === "boxAgent") {
+            if (wants !== "off" && wants !== "local" && e2b.e2bConfigured(cfg)) {
+                let sandbox = await e2b.findSandbox(cfg, bot.id).catch(() => null);
+                // provision sandbox on first use if in cloud mode
+                if (!sandbox && wants === "cloud") {
                     broadcast({ kind: "computer", botId: bot.id, state: "provisioning" });
-                    await box.provisionBox(cfg, bot.id, bot.name);
-                    b = await box.findBox(cfg, bot.id).catch(() => null);
+                    await e2b.provisionSandbox(cfg, bot.id, bot.name);
+                    sandbox = await e2b.findSandbox(cfg, bot.id).catch(() => null);
                 }
-                if (b)
-                    integrations.computer = { boxId: b.id, token: cfg.box.token };
+                if (sandbox)
+                    integrations.sandbox = { sandboxId: sandbox.sandboxId, apiKey: cfg.e2b.apiKey };
             }
             // local computer (this Mac) via the Electron-hosted cua-driver: the
             // Electron main process owns the daemon (TCC attribution) and writes
             // its spawn contract to cua-connection.json; the harness only reads it
-            if (!integrations.computer && wants !== "off" && wants !== "cloud") {
+            if (!integrations.sandbox && wants !== "off" && wants !== "cloud") {
                 const cua = readCuaConnection();
                 if (cua)
                     integrations.localComputer = cua;
@@ -288,14 +289,17 @@ async function startTurn(botId, text) {
                 resumeCursor: bot.resumeCursors[bot.modelSelection.instanceId],
                 transcript,
                 system: persona +
-                    (integrations.computer && instance.driverKind !== "boxAgent"
-                        ? " You have your own cloud computer — use the computer tools (screenshot, computer_exec, open_url) whenever browsing or acting on a desktop helps."
+                    (integrations.composio
+                        ? " You have Composio Connect tools for Gmail, Google Drive, Slack, GitHub, and other connected apps. Use those tools to access the user's accounts. Never claim you lack access before searching tools and checking connections."
+                        : "") +
+                    (integrations.sandbox
+                        ? " You have access to an e2b sandbox — use the sandbox_exec tool to run shell commands in the isolated Linux environment."
                         : integrations.localComputer
                             ? " You can act on the user's computer through the computer tools — take a screenshot or read the desktop state first, prefer accessibility actions over raw coordinates, and act carefully."
                             : ""),
                 integrations,
             });
-            if (integrations.computer)
+            if (integrations.sandbox)
                 startScreenPoller(bot.id);
         }
         catch (e) {
@@ -316,8 +320,9 @@ function configStatus() {
     return {
         hf: { configured: Boolean(cfg.hf?.key) },
         xai: { configured: Boolean(cfg.xai?.key) },
+        deepseek: { configured: Boolean(cfg.deepseek?.key) },
         composio: { configured: Boolean(cfg.composio?.key), apiKeyConfigured: Boolean(cfg.composio?.apiKey) },
-        box: { configured: Boolean(cfg.box?.token) },
+        e2b: { configured: Boolean(cfg.e2b?.apiKey) },
     };
 }
 /** Rebuild the provider fleet after a config change so new keys take
@@ -492,7 +497,7 @@ const server = createServer(async (req, res) => {
         if ((method === "PUT" || method === "PATCH") && path === "/api/config") {
             const body = await readBody(req);
             const patch = {};
-            for (const key of ["hf", "xai", "composio", "box"]) {
+            for (const key of ["hf", "xai", "deepseek", "composio", "e2b"]) {
                 if (body[key] && typeof body[key] === "object")
                     patch[key] = body[key];
             }
@@ -523,11 +528,11 @@ const server = createServer(async (req, res) => {
         m = path.match(/^\/api\/connectors\/([\w-]+)$/);
         if (m && method === "DELETE")
             return json(res, 200, await composio.removeService(cfg, m[1]));
-        // ── the bot's cloud computer (Box) ──
+        // ── the bot's cloud sandbox (e2b) ──
         m = path.match(/^\/api\/bots\/([\w-]+)\/computer$/);
         if (m && method === "GET")
-            return json(res, 200, await box.boxStatus(cfg, m[1]));
-        m = path.match(/^\/api\/bots\/([\w-]+)\/computer\/(provision|join|sleep|exec|screenshot)$/);
+            return json(res, 200, await e2b.sandboxStatus(cfg, m[1]));
+        m = path.match(/^\/api\/bots\/([\w-]+)\/computer\/(provision|join|sleep|kill|exec|screenshot)$/);
         if (m && method === "POST") {
             const botId = m[1];
             const bot = store.bot(botId);
@@ -535,17 +540,19 @@ const server = createServer(async (req, res) => {
                 return json(res, 404, { error: "no such bot" });
             switch (m[2]) {
                 case "provision":
-                    return json(res, 200, await box.provisionBox(cfg, botId, bot.name));
+                    return json(res, 200, await e2b.provisionSandbox(cfg, botId, bot.name));
                 case "join":
-                    return json(res, 200, await box.joinBox(cfg, botId));
+                    return json(res, 200, await e2b.joinSandbox(cfg, botId));
                 case "sleep":
-                    return json(res, 200, await box.sleepBox(cfg, botId));
+                    return json(res, 200, await e2b.pauseSandbox(cfg, botId));
+                case "kill":
+                    return json(res, 200, await e2b.killSandbox(cfg, botId));
                 case "exec": {
                     const body = await readBody(req);
-                    return json(res, 200, await box.execOnBox(cfg, botId, String(body.command ?? "")));
+                    return json(res, 200, await e2b.execOnSandbox(cfg, botId, String(body.command ?? "")));
                 }
                 case "screenshot":
-                    return json(res, 200, await box.screenshotBox(cfg, botId));
+                    return json(res, 200, await e2b.screenshotSandbox(cfg, botId));
             }
         }
         // packaged app: the server serves the built UI too (window → :8799 for

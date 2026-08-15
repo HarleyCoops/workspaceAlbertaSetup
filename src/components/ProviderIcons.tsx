@@ -44,6 +44,14 @@ export function CodexMark({ size = 16, className }: IconProps) {
   );
 }
 
+export function DeepSeekMark({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={cn("fill-[#4D6BFE]", className)}>
+      <path d="M12 2.2c-1.4 2.4-2 5.1-1.6 7.8-2.2-1.5-3.6-3.8-4.2-6.4C3.4 6.2 2 9.9 2.4 13.6 3 18.2 7 22 12 22s9-3.8 9.6-8.4c.4-3.7-1-7.4-3.8-9.9-.6 2.6-2 4.9-4.2 6.4.4-2.7-.2-5.4-1.6-7.9z" />
+    </svg>
+  );
+}
+
 export function ComputerMark({ size = 16, className }: IconProps) {
   return <Monitor size={size} className={cn("text-ink-secondary", className)} />;
 }
@@ -52,6 +60,8 @@ export function ProviderMark({ driverKind, size, className }: IconProps & { driv
   switch (driverKind) {
     case "huggingface":
       return <HuggingFaceMark size={size} className={className} />;
+    case "deepseek":
+      return <DeepSeekMark size={size} className={className} />;
     case "grok":
       return <GrokMark size={size} className={className} />;
     case "claudeAgent":

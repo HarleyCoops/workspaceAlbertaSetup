@@ -67,6 +67,7 @@ export interface Bot {
 export interface ConfigStatus {
   hf?: { configured: boolean };
   xai?: { configured: boolean };
+  deepseek?: { configured: boolean };
   composio: { configured: boolean; apiKeyConfigured?: boolean };
   e2b?: { configured: boolean };
 }
@@ -523,7 +524,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         case "config":
           rawDispatch({
             type: "configStatus",
-            config: { hf: frame.hf, xai: frame.xai, composio: frame.composio, e2b: frame.e2b },
+            config: { hf: frame.hf, xai: frame.xai, deepseek: frame.deepseek, composio: frame.composio, e2b: frame.e2b },
           });
           api("/api/instances")
             .then(({ instances }) => rawDispatch({ type: "instances", instances }))

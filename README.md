@@ -48,7 +48,7 @@ contacts, watch them work, approve what matters.
 
 **Key differences from other AI chat apps:**
 
-- **Open-source models first** — Powered by Hugging Face Inference Providers (Llama, Mistral, Qwen, etc.)
+- **Open-source models first** — Powered by Hugging Face Inference Providers (GLM, Llama, Mistral, Qwen, etc.)
   with EU-pinnable endpoints. No vendor lock-in.
 - **Linux-first** — Primary target is Raspberry Pi 5 16GB desk terminals and Linux workstations.
   macOS support included but secondary.
@@ -107,20 +107,38 @@ sudo apt-get install -f  # Fix any missing dependencies
 **4. Configure Hugging Face:**
 
 Open **App Settings** (gear icon in sidebar) and paste your [HF token](https://huggingface.co/settings/tokens).
-That's it — your bots now run on open-source models.
+That's it — new bots default to **GLM 4.6** on Hugging Face. Paste a Composio Connect key (`ck_…`) in App Settings if you want Gmail / Drive / Slack / GitHub tools on that same default bot.
 
-### From Source
+### From Source (Linux / Raspberry Pi)
+
+No packaged `.deb` required. From a clone:
 
 ```sh
 git clone https://github.com/HarleyCoops/workspaceAlbertaSetup && cd workspaceAlbertaSetup
 pnpm install
+pnpm start
+```
 
-pnpm dev:server    # harness server → 127.0.0.1:8799
-pnpm dev           # app → http://127.0.0.1:5199
-pnpm dev:desktop   # or the Electron shell
+`pnpm start` launches the harness server, Vite (`127.0.0.1:5199`), and Electron together. It waits for Vite (and the server) before opening the window — a black Electron window usually means Vite is not up yet.
+
+On Linux/Pi the start path sets `ELECTRON_DISABLE_SANDBOX=1` and passes `--no-sandbox` (chrome-sandbox SUID errors). It also sets `ELECTRON_DISABLE_GPU=1` as a GPU fallback; unset that env var if your desktop GPU works.
+
+If **pnpm 11** blocks `electron` / `esbuild` postinstall scripts:
+
+```sh
+pnpm config set dangerouslyAllowAllBuilds true
+pnpm install
 ```
 
 Requirements: **Node 20+**, **pnpm**
+
+Individual processes (if you need them separately):
+
+```sh
+pnpm dev:server    # harness server → 127.0.0.1:8799
+pnpm dev           # app → http://127.0.0.1:5199
+pnpm dev:desktop   # Electron shell (expects Vite already on 5199)
+```
 
 ### Building Packages
 
@@ -147,11 +165,15 @@ WorkspaceAlberta uses Hugging Face Inference Providers as the default AI backend
 
 1. Get a token from [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 2. Paste it in App Settings → "Hugging Face token"
-3. Start chatting
+3. Start chatting — new bots default to **GLM 4.6** (`zai-org/GLM-4.6` on the HF router)
 
 **Custom endpoints:** For EU compliance or dedicated inference, set a custom base URL:
 - App Settings → "Hugging Face base URL"
 - Or `HF_BASE_URL` environment variable
+
+### Optional: DeepSeek
+
+Paid fallback via the official DeepSeek API (`deepseek-v4-pro` / `deepseek-v4-flash`). Hugging Face stays the default. Paste a key in App Settings, or set `DEEPSEEK_API_KEY`.
 
 ### Optional: CLI Agents
 
@@ -170,7 +192,8 @@ Paste credentials in **App Settings** to unlock additional features:
 
 | Key | Unlocks |
 |-----|---------|
-| Composio Connect key (`ck_…`) | Gmail, Slack, GitHub, and 500+ app integrations |
+| Composio Connect key (`ck_…`) | Gmail, Drive, Slack, GitHub, and 500+ app integrations (works on the default Hugging Face bot) |
+| DeepSeek API key | Optional paid model fallback (`deepseek-v4-pro`) |
 | e2b API key (`e2b_…`) | Cloud sandboxes for your bots (isolated Linux environments) |
 
 ---
@@ -210,7 +233,8 @@ WorkspaceAlberta is two processes:
                             │ HTTP + SSE
 ┌───────────────────────────▼─────────────────────────────────────┐
 │  Harness Server (127.0.0.1:8799)                                │
-│  - Driver registry: HF, Claude CLI, Codex CLI                   │
+│  - Driver registry: HF (default + Composio tools), DeepSeek,    │
+│    Claude CLI, Codex CLI                                        │
 │  - Event bus normalizes all provider protocols                  │
 │  - Permission broker for tool approvals                         │
 │  - Transcript storage in ~/.config/workspacealberta             │
@@ -253,10 +277,13 @@ Contents:
 |----------|---------|---------|
 | `HF_TOKEN` | Hugging Face API token | — |
 | `HF_BASE_URL` | Custom HF inference endpoint | `https://router.huggingface.co/v1` |
+| `DEEPSEEK_API_KEY` | DeepSeek API key (optional fallback) | — |
+| `DEEPSEEK_BASE_URL` | DeepSeek API base URL | `https://api.deepseek.com` |
 | `WA_PORT` | Server port | `8799` |
 | `WA_ANALYTICS` | Opt-in to telemetry (`1` to enable) | disabled |
 | `E2B_API_KEY` | e2b sandbox API key (optional) | — |
 | `COMPOSIO_KEY` | Composio Connect key | — |
+| `ELECTRON_DISABLE_GPU` | Set by `pnpm start` on Linux; unset to use GPU | `1` on Linux start |
 
 ---
 

@@ -1,6 +1,6 @@
 // App-level settings, in the right-side slot: credentials shared by all
 // bots. Per-bot settings (name, persona, model, computer) live in
-// SettingsPanel; contextual Box-token entry also stays in ComputerPanel.
+// SettingsPanel; e2b sandbox key entry also stays in ComputerPanel.
 import { X } from "lucide-react";
 import { useStore } from "@/state/store";
 import { ApiKeyRow } from "./ApiKeys";
@@ -44,6 +44,16 @@ export function AppSettingsPanel() {
               placeholder="https://router.huggingface.co/v1"
               type="text"
             />
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-card p-4">
+          <div className="text-[15px] font-medium text-ink">DeepSeek</div>
+          <div className="mt-0.5 text-[13px] text-ink-secondary">
+            Optional paid fallback (DeepSeek V4 Pro / Flash). Hugging Face stays the default brain.
+          </div>
+          <div className="mt-4 flex flex-col gap-4">
+            <ApiKeyRow section="deepseek" label="DeepSeek API key" placeholder="sk-…" />
           </div>
         </div>
 

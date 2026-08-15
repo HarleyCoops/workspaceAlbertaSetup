@@ -9,11 +9,13 @@
 import type { AnyProviderDriver } from "../contracts.ts";
 import { ClaudeDriver } from "./claude.ts";
 import { CodexDriver } from "./codex.ts";
+import { DeepSeekDriver } from "./deepseek.ts";
 import { GrokDriver } from "./grok.ts";
 import { HuggingFaceDriver } from "./huggingface.ts";
 
 export const BUILT_IN_DRIVERS: readonly AnyProviderDriver[] = [
   HuggingFaceDriver, // Primary: open-source models for WorkspaceAlberta
+  DeepSeekDriver, // Optional paid fallback when DEEPSEEK_API_KEY is set
   GrokDriver,
   ClaudeDriver,
   CodexDriver,
