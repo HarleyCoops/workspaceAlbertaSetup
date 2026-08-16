@@ -2,7 +2,9 @@
 
 A complete beginner's guide to setting up a WorkspaceAlberta CEO productivity terminal from a sealed box. No prior Raspberry Pi experience required.
 
-By the end of this guide you will have a working AI-assisted productivity desk: 1Password for secure credential management, ChatGPT Desktop for conversational AI, Codex CLI for terminal-based coding help, OpenCode for MCP agent workflows, Tailscale for remote support without router hassles, and the WorkspaceAlberta chat app for open-source AI bots.
+Validated on a Raspberry Pi 5 (16GB), Ubuntu Desktop 24.04 LTS ARM64, official 27W USB-C wall supply — hostname example `wa-pi5-christian-01` (2026-08-14/15 unbox). Use this guide so the next Pi does not repeat that setup.
+
+By the end of this guide you will have a working AI-assisted productivity desk: Tailscale for remote support without router hassles, Node 22 and the official DeepSeek Harness CLI (`dsh`), ChatGPT Desktop, Codex CLI, Claude Code, OpenCode / OpenCode2, and the WorkspaceAlberta chat app from this repo. 1Password is optional. Litter (kittylitter.app) is phone-only operator support — customers never see or install it.
 
 ---
 
@@ -13,7 +15,7 @@ Before you start, gather these items:
 | Item | Notes |
 |------|-------|
 | **Raspberry Pi 5 16GB** | The 16GB RAM model. Smaller models will work but may run slower with heavy AI workloads. |
-| **Power supply** | The official Raspberry Pi 45W USB-C power supply (white). Using an underpowered supply causes throttling and crashes. |
+| **Power supply** | Official Raspberry Pi **27W USB-C** wall supply (5.1V / 5A). A 45W USB-C PD supply also works. Phone chargers and weak hubs throttle or crash the Pi 5. |
 | **Storage** | A high-quality microSD card (32GB minimum, 64GB+ recommended) or an NVMe SSD with a Pi 5-compatible HAT. |
 | **Display** | Any monitor with HDMI input. The full terminal spec uses dual 4K monitors, but a single display works fine for initial setup. |
 | **Micro-HDMI to HDMI cable** | The Pi 5 uses micro-HDMI ports, not full-size HDMI. |
@@ -48,7 +50,7 @@ The operating system is the software that runs the Pi. You need to write it to y
 4. **Click Next.** A dialog asks if you want to apply customization.
 
 5. **Click Edit Settings** (recommended):
-   - **Hostname:** Enter a name like `wa-pi5-yourname-01` (lowercase, no spaces).
+   - **Hostname:** Enter a name like `wa-pi5-christian-01` or `wa-pi5-yourname-01` (lowercase, no spaces).
    - **Username and password:** Create your admin account. Remember this password — you will need it for `sudo` commands.
    - **Wireless LAN:** If you are using Wi-Fi, enter your network name and password here.
    - **Locale settings:** Set your timezone (e.g., `America/Edmonton` for Alberta).
@@ -109,7 +111,7 @@ If prompted, enter the password you created during setup. You will not see chara
 
 ## 5. Run the CEO Software Installer
 
-The installer script sets up the CEO productivity tools: 1Password, Tailscale, Codex CLI, ChatGPT Desktop, OpenCode, and the WorkspaceAlberta chat app.
+The installer script sets up the CEO productivity tools: Tailscale, Node.js 22 (NodeSource), DeepSeek Harness (`@deepseek-ai/dsh`), Codex CLI, Claude Code, ChatGPT Desktop (Linux arm64 `.deb`), OpenCode / OpenCode2 layout, optional 1Password, and the WorkspaceAlberta chat app.
 
 ### Basic install
 
@@ -149,7 +151,9 @@ For the full list of installer options, see [`ceo-pi-setup.md`](ceo-pi-setup.md)
 
 After the installer finishes, open a **new terminal** (or run `source ~/.bashrc`) so the new tools are on your PATH.
 
-### 1. Sign into 1Password
+### 1. Sign into 1Password (optional)
+
+1Password is useful for secrets but is **not required** for the desk to work. Skip this if you are not using it (`INSTALL_1PASSWORD=0` on the next unbox).
 
 - Open the applications menu and launch **1Password**.
 - Sign in with your CEO / business account (or create one at [1password.com](https://1password.com)).
@@ -172,6 +176,22 @@ codex
 
 A browser window will open. Sign in with your OpenAI account. Once authenticated, Codex CLI can help you write and debug code from the terminal.
 
+### 3b. Authenticate Claude Code
+
+Hugging Face / Llama inside WorkspaceAlberta is **text-only**. Composio tools (Gmail, Drive, Slack, GitHub) require **Claude Code or Codex**.
+
+```bash
+claude
+```
+
+Sign in when prompted. If `claude` is missing:
+
+```bash
+sudo /usr/bin/npm i -g @anthropic-ai/claude-code
+```
+
+Use `/usr/bin/npm` — see [Node.js on the Pi](#7-nodejs-deepseek-harness-and-the-chat-app-from-source).
+
 ### 4. Authenticate OpenCode
 
 In the terminal, run:
@@ -184,32 +204,148 @@ Follow the authentication prompts for your preferred AI provider.
 
 ### 5. Launch WorkspaceAlberta Chat App
 
-- Open the applications menu and launch **WorkspaceAlberta**.
-- Open **App Settings** (gear icon in sidebar) and paste your [Hugging Face token](https://huggingface.co/settings/tokens).
-- Start chatting with AI bots powered by open-source models.
+If a `.deb` was installed, open **WorkspaceAlberta** from the applications menu.
 
-If the app was not installed from releases (no release exists yet), you can build it from source:
+There is often no release yet. From this repo, the path that actually works on the desk is `git pull`, `pnpm install`, and `pnpm start` (the `scripts/start-desktop.mjs` helper). Vite serves the UI at `http://127.0.0.1:5199`. See [WorkspaceAlberta from this repo](#workspacealberta-from-this-repo) below.
 
-```bash
-cd ~/workspaceAlbertaSetup
-pnpm install
-pnpm package:pi
-sudo dpkg -i dist/workspacealberta_*_arm64.deb
-```
+- Open **App Settings** (gear icon in sidebar).
+- Paste a [Hugging Face token](https://huggingface.co/settings/tokens) only if you want optional text inference (GLM, Llama, Qwen). HF/Llama cannot drive Composio tools.
+- For Gmail / Drive / Slack / GitHub, install and sign in to **Claude Code or Codex**, then paste a Composio Connect key (`ck_…`) in App Settings.
+
+Packaging a `.deb` is optional (`pnpm package:pi`) and is slower than `pnpm start` for first boot.
 
 ### 6. Approve Tailscale (if no auth key was provided)
 
 If you ran the installer without a `TS_AUTHKEY`, Tailscale is installed but not connected. To join:
 
 ```bash
-sudo tailscale up --advertise-tags="tag:wa-terminal,tag:wa-pi5" --ssh
+sudo tailscale up --ssh --hostname="$(hostname)" --advertise-tags="tag:wa-terminal,tag:wa-pi5"
 ```
 
 This prints a URL. Open it in a browser, sign in to your organization's Tailscale account, and approve the device. Ask your IT administrator if you do not have a Tailscale account.
 
+From a Windows desktop on the same tailnet, `tailscale ssh christian@wa-pi5-christian-01` (use your Pi username and hostname) works. For unattended commands, add a dedicated ed25519 key — see [Dedicated SSH key from Windows](#dedicated-ssh-key-from-windows) below.
+
 ---
 
-## 7. You're Done When...
+## 7. Node.js, DeepSeek Harness, and the chat app from source
+
+The CEO installer now installs Node 22 (NodeSource), `build-essential`, `python3`, and `@deepseek-ai/dsh`. If you are on a Pi that was unboxed before that change, run the steps in this section by hand.
+
+### Node 22.19+ (or 24+)
+
+DeepSeek Harness needs **Node 22.19+ or 24+**. NodeSource Node 22 is the supported path. Ubuntu Desktop terminals can pick up an older Node earlier on `PATH` (snap, nvm, or the distro package). Prefer the NodeSource binaries:
+
+```bash
+/usr/bin/node -v
+/usr/bin/npm -v
+```
+
+If `/usr/bin/node` is missing or older than 22.19:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+/usr/bin/node -v
+```
+
+Do **not** treat an npm 12 upgrade as a required step. Use the npm that ships with NodeSource Node 22.
+
+### DeepSeek Harness (`dsh`)
+
+DeepSeek Harness is the official published package **`@deepseek-ai/dsh`**. Do **not** clone and build the DeepSeek monorepo on the Pi — that build is too heavy.
+
+Install path that actually works:
+
+```bash
+sudo apt-get install -y build-essential python3
+sudo /usr/bin/npm i -g @deepseek-ai/dsh
+```
+
+`build-essential` must come first. The `node-pty` native addon fails without `g++`.
+
+The binary lands at `/usr/bin/dsh`. Launch it from the **Ubuntu Terminal** app (not from inside the WorkspaceAlberta Electron window). Working directory does not matter:
+
+```bash
+dsh web
+```
+
+`dsh web` binds **`http://127.0.0.1:3080` only** (not the LAN). Open that URL in a browser on the Pi, then paste a DeepSeek API key in **Settings → Models**.
+
+This key and UI are **separate** from WorkspaceAlberta's in-app DeepSeek driver (App Settings → DeepSeek API key / `DEEPSEEK_API_KEY`). One does not configure the other.
+
+### WorkspaceAlberta from this repo
+
+```bash
+cd ~/workspaceAlbertaSetup
+git pull
+sudo /usr/bin/npm i -g pnpm
+pnpm install
+pnpm start
+```
+
+`pnpm start` runs `scripts/start-desktop.mjs`: harness server (`127.0.0.1:8799`), Vite (`127.0.0.1:5199`), and Electron. A black Electron window usually means Vite is not up yet.
+
+If **pnpm 11** blocks `electron` / `esbuild` postinstall scripts:
+
+```bash
+pnpm config set dangerouslyAllowAllBuilds true
+pnpm install
+```
+
+Live TypeScript needs Node 22+. On Node 20, run `pnpm build:server` first.
+
+### OpenCode2, Codex, ChatGPT Desktop
+
+These are part of the CEO installer. Confirm they landed:
+
+```bash
+opencode --version
+opencode2 --version
+codex --version
+dpkg -l | grep chatgpt
+```
+
+If `opencode2` is missing, re-run the official installer (`curl -fsSL https://opencode.ai/install | bash`) and see [`opencode2-layout/README.md`](../opencode2-layout/README.md). ChatGPT Desktop is the Linux **arm64** `.deb` from OpenAI, not the Windows/Mac store build.
+
+---
+
+## Dedicated SSH key from Windows
+
+`tailscale ssh <user>@<hostname>` is fine for interactive support. A dedicated ed25519 key is more reliable for unattended commands (scripts, editors, CI-style `ssh host cmd`).
+
+On the Windows desktop (OpenSSH):
+
+```powershell
+ssh-keygen -t ed25519 -f $HOME\.ssh\wa-pi5-ed25519 -C "wa-pi-unbox"
+Get-Content $HOME\.ssh\wa-pi5-ed25519.pub
+```
+
+On the Pi, append that single public-key line to the login user's `~/.ssh/authorized_keys` (create `~/.ssh` at mode `700` and `authorized_keys` at mode `600` if needed). Use your Pi username (example: `christian`), not a pasted secret.
+
+Then add a Host entry in Windows `~/.ssh/config` (OpenSSH: `C:\Users\<you>\.ssh\config`):
+
+```sshconfig
+Host wa-pi5-christian-01
+  HostName 100.x.x.x
+  User christian
+  IdentityFile ~/.ssh/wa-pi5-ed25519
+  IdentitiesOnly yes
+```
+
+Set `HostName` to the Pi's Tailscale **100.x** IPv4 (`tailscale ip -4` on the Pi). `IdentitiesOnly yes` stops OpenSSH from offering every other key and failing the attempt.
+
+Test from Windows:
+
+```powershell
+ssh wa-pi5-christian-01 hostname
+```
+
+Do not commit private keys, Tailscale auth keys, or API keys. See [`tailscale-pi-remote-support.md`](tailscale-pi-remote-support.md) for the full support runbook.
+
+---
+
+## 8. You're Done When...
 
 Run these checks to confirm everything is working:
 
@@ -221,31 +357,40 @@ hostname
 tailscale status
 tailscale ip -4
 
-# Check 1Password
+# Node + DeepSeek Harness (use these paths, not a shadowed node)
+/usr/bin/node -v
+/usr/bin/npm -v
+/usr/bin/dsh --help
+
+# Check 1Password (optional)
 1password --version
 op --version
 
 # Check AI tools
 codex --version
+claude --version
 opencode --version
+opencode2 --version
 dpkg -l | grep chatgpt
 dpkg -l | grep workspacealberta
 ```
 
 **Expected results:**
 
-- `hostname` shows your device name.
-- `tailscale status` shows "Connected" or lists your Tailscale IP.
-- `1password --version` and `op --version` print version numbers.
-- `codex --version` and `opencode --version` print version numbers.
-- `dpkg -l | grep chatgpt` shows a line with "chatgpt" (the desktop app).
-- `dpkg -l | grep workspacealberta` shows the chat app (if installed from release).
+- `hostname` shows your device name (example: `wa-pi5-christian-01`).
+- `tailscale status` shows "Connected" or lists your Tailscale 100.x IP.
+- `/usr/bin/node -v` is **v22.19+** or **v24+**.
+- `/usr/bin/dsh --help` prints usage. `dsh web` listens on `http://127.0.0.1:3080`.
+- `1password --version` and `op --version` print version numbers if you installed 1Password.
+- `codex --version`, `claude --version`, and `opencode --version` print version numbers.
+- `dpkg -l | grep chatgpt` shows a line with "chatgpt" (the Linux arm64 desktop app).
+- WorkspaceAlberta either appears in `dpkg -l` or launches via `pnpm start` (Vite on `127.0.0.1:5199`).
 
 If all checks pass, your CEO productivity terminal is ready to use.
 
 ---
 
-## 8. If Something Goes Wrong
+## 9. If Something Goes Wrong
 
 ### "command not found" after installing Codex or OpenCode
 
@@ -324,14 +469,40 @@ The desktop app is validated for Ubuntu 24.04/26.04 and Fedora. On Raspberry Pi 
 
 ### WorkspaceAlberta chat app not found
 
-If the installer said "No release found", the app was not available from GitHub releases. Build it from source:
+If the installer said "No release found", run the app from this repo instead of waiting on a `.deb`:
 
 ```bash
 cd ~/workspaceAlbertaSetup
+git pull
 pnpm install
-pnpm package:pi
-sudo dpkg -i dist/workspacealberta_*_arm64.deb
+pnpm start
 ```
+
+`pnpm start` opens Electron after Vite is up on `127.0.0.1:5199`. Packaging (`pnpm package:pi`) is optional.
+
+### `dsh` missing, or `node-pty` / `g++` errors during install
+
+Install the compiler toolchain first, then the published CLI — not a source checkout:
+
+```bash
+sudo apt-get install -y build-essential python3
+sudo /usr/bin/npm i -g @deepseek-ai/dsh
+/usr/bin/dsh --help
+```
+
+### `node -v` is 18.x (or another old version) but NodeSource is installed
+
+A desktop terminal picked up an older Node on `PATH`. Call the NodeSource binaries directly:
+
+```bash
+/usr/bin/node -v
+/usr/bin/npm -v
+sudo /usr/bin/npm i -g @deepseek-ai/dsh
+```
+
+### `dsh web` is not reachable from another machine
+
+That is expected. The UI binds `127.0.0.1:3080` only. Open it in a browser **on the Pi**, or use an SSH tunnel. Do not run `dsh` inside the WorkspaceAlberta Electron app.
 
 ---
 
@@ -339,8 +510,8 @@ sudo dpkg -i dist/workspacealberta_*_arm64.deb
 
 - Read the full software installer reference: [`ceo-pi-setup.md`](ceo-pi-setup.md)
 - Learn about remote support: [`tailscale-pi-remote-support.md`](tailscale-pi-remote-support.md)
-- Phone-based support with Litter: [`litter-remote-support.md`](litter-remote-support.md)
-- Configure Hugging Face for the chat app: open WorkspaceAlberta → App Settings → paste your HF token
+- Phone-based support with Litter (not customer-facing): [`litter-remote-support.md`](litter-remote-support.md)
+- Configure Hugging Face for optional text inference: WorkspaceAlberta → App Settings → HF token. Claude or Codex is required for Composio tools.
 
 ---
 
