@@ -33,6 +33,7 @@ This repository is the **setup home** for WorkspaceAlberta CEO productivity term
 | **Litter mobile support** | [`docs/litter-remote-support.md`](docs/litter-remote-support.md) |
 | **Handheld companion** | [`docs/handheld-companion.md`](docs/handheld-companion.md) |
 | **Linux chat app source** | This repo (React + Electron) |
+| **Chat / harness UI reference** | [`docs/ui-resources.md`](docs/ui-resources.md) |
 
 **Related:** The procurement MCP product (CanadaBuys agents, Hermes appliance) lives in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta).
 
@@ -239,6 +240,7 @@ WorkspaceAlberta is two processes:
 │  - Chat interface, model picker, computer panel                 │
 │  - Dispatches commands over HTTP                                │
 │  - Folds one SSE event stream into state                        │
+│  - Visual reference: Beautiful UI (see docs/ui-resources.md)    │
 └───────────────────────────┬─────────────────────────────────────┘
                             │ HTTP + SSE
 ┌───────────────────────────▼─────────────────────────────────────┐
@@ -309,6 +311,12 @@ Based on [OpenMausBot](https://github.com/milind-soni/OpenMausBot) by Milind Son
 
 Contributions welcome! The driver SPI in [`server/contracts.ts`](server/contracts.ts) is
 deliberately small. See the existing drivers in [`server/drivers/`](server/drivers/) for examples.
+
+When changing the chat or harness UI, treat [Beautiful UI](https://www.beautifului.dev/) as the
+primitive reference — see [`docs/ui-resources.md`](docs/ui-resources.md). Do not rewrite the app,
+do not add a Beautiful UI dependency, and do not replace Composio Connect (the tool mesh stays
+MCP into Claude Code / Codex CLI). The [DeepSeek Harness](https://github.com/HarleyCoops/deepseek-Entire.io)
+uses the same reference so the two surfaces stay visually aligned.
 
 ---
 
