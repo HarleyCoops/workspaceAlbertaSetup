@@ -8,3 +8,14 @@ electron/resources/speech-helper
 release
 release/
 dist/
+
+# ESP-IDF companion experiment (generated locally; may contain menuconfig secrets)
+firmware/companion/sdkconfig
+firmware/companion/sdkconfig.old
+firmware/companion/build/
+firmware/companion/managed_components/
+firmware/companion/dependencies.lock
+firmware/companion/secrets
+scripts/__pycache__/
+__pycache__/
+

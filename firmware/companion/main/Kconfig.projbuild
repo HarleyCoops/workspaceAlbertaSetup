@@ -1,0 +1,46 @@
+menu "WorkspaceAlberta Companion Experiment"
+
+    config WA_WIFI_SSID
+        string "WiFi SSID placeholder (prefer NVS / SoftAP / serial)"
+        default ""
+        help
+            Optional compile-time SSID. Leave empty and use first-run SoftAP
+            or serial `set wifi_ssid`. Never commit a real network name that
+            identifies a private LAN if you can avoid it.
+
+    config WA_WIFI_PASSWORD
+        string "WiFi password placeholder (never commit a real password)"
+        default ""
+        help
+            Optional compile-time password. Must stay empty in the repo.
+            Store the real password in NVS via SoftAP or serial.
+
+    config WA_BRIDGE_HOST
+        string "Pi companion-bridge host (LAN IP or .local name)"
+        default "192.168.1.100"
+        help
+            Raspberry Pi hosting scripts/companion-bridge.py.
+            Example: 192.168.1.42 or wa-pi5.local
+
+    config WA_BRIDGE_PORT
+        int "Pi companion-bridge port"
+        range 1 65535
+        default 8788
+        help
+            Must be 8788 for this experiment. 8799 is Workspace Alberta.
+            Do not use 3080, 5199, or 49374.
+
+    config WA_SOFTAP_SSID
+        string "First-run SoftAP SSID"
+        default "WA-Companion"
+        help
+            Open SoftAP used only when NVS/Kconfig have no WiFi SSID.
+
+    config WA_HEALTH_INTERVAL_MS
+        int "GET /health interval (ms)"
+        range 1000 60000
+        default 5000
+        help
+            How often the home screen polls the Pi /health endpoint.
+
+endmenu

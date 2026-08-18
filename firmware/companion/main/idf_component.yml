@@ -1,0 +1,11 @@
+# Verified 2026-08-18 from Waveshare EXAMPLES_GUIDE.md and the
+# ESP Component Registry listing for waveshare/esp32_s3_touch_amoled_1_8.
+# BSP ^2.0.3 is the V2 path (CO5300; CST816S-compatible touch for CST820).
+# Do not pin BSP ^1 — that is the V1 SH8601/FT3168 board.
+version: "1.0.0"
+
+dependencies:
+  idf: ">=5.5,<6.1"
+  waveshare/esp32_s3_touch_amoled_1_8:
+    version: "^2.0.3"
+    public: true

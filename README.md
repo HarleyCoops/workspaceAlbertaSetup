@@ -31,7 +31,7 @@ This repository is the **setup home** for WorkspaceAlberta CEO productivity term
 | **Installer reference** | [`docs/ceo-pi-setup.md`](docs/ceo-pi-setup.md) |
 | **Remote support runbook** | [`docs/tailscale-pi-remote-support.md`](docs/tailscale-pi-remote-support.md) |
 | **Litter mobile support** | [`docs/litter-remote-support.md`](docs/litter-remote-support.md) |
-| **Handheld companion** | [`docs/handheld-companion.md`](docs/handheld-companion.md) |
+| **Handheld companion** | [`docs/handheld-companion.md`](docs/handheld-companion.md) (full spec) · V2 experiment: [`firmware/companion/README.md`](firmware/companion/README.md) |
 | **Linux chat app source** | This repo (React + Electron) |
 | **Chat / harness UI reference** | [`docs/ui-resources.md`](docs/ui-resources.md) |
 
