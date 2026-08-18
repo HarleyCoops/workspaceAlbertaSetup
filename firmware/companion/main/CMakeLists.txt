@@ -5,8 +5,10 @@ idf_component_register(
         "wifi.c"
         "bridge.c"
         "ui.c"
+        "tailscale.c"
     INCLUDE_DIRS "."
     REQUIRES
+        microlink
         esp32_s3_touch_amoled_1_8
         nvs_flash
         esp_wifi

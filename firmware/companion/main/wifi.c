@@ -110,6 +110,8 @@ esp_err_t wifi_app_start_sta(const char *ssid, const char *pass)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    /* MicroLink / WireGuard wants no modem sleep (their basic_connect example). */
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_LOGI(TAG, "STA start ssid=%s (password not logged)", ssid);
     return ESP_OK;
 }
@@ -144,7 +146,7 @@ static bool form_get(const char *body, const char *key, char *out, size_t out_le
             const char *value = found + key_len + 1;
             const char *end = strchr(value, '&');
             size_t n = end ? (size_t)(end - value) : strlen(value);
-            char tmp[128];
+            char tmp[640];
             if (n >= sizeof(tmp)) {
                 n = sizeof(tmp) - 1;
             }
@@ -167,15 +169,18 @@ static const char *PORTAL_HTML =
     "<form method=POST action=/save>"
     "<label>WiFi SSID</label><input name=wifi_ssid value='%s' required>"
     "<label>WiFi password</label><input name=wifi_pass type=password placeholder='enter on device'>"
-    "<label>Pi host</label><input name=bridge_host value='%s'>"
+    "<label>Pi Tailscale host</label><input name=bridge_host value='%s'>"
+    "<label>Pi LAN fallback</label><input name=bridge_lan value='%s'>"
     "<label>Pi port</label><input name=bridge_port value='%u'>"
+    "<label>Tailscale auth key</label><input name=ts_auth_key type=password placeholder='tskey-auth-… paste on device'>"
     "<button type=submit>Save and reboot</button></form></body></html>";
 
 static esp_err_t portal_get(httpd_req_t *req)
 {
-    char page[1600];
+    char page[2200];
     snprintf(page, sizeof(page), PORTAL_HTML,
-             s_portal_seed.wifi_ssid, s_portal_seed.bridge_host, (unsigned)s_portal_seed.bridge_port);
+             s_portal_seed.wifi_ssid, s_portal_seed.bridge_host,
+             s_portal_seed.bridge_lan_host, (unsigned)s_portal_seed.bridge_port);
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
 }
@@ -183,11 +188,11 @@ static esp_err_t portal_get(httpd_req_t *req)
 static esp_err_t portal_save(httpd_req_t *req)
 {
     int remaining = req->content_len;
-    if (remaining <= 0 || remaining > 512) {
+    if (remaining <= 0 || remaining > 1024) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "bad body");
         return ESP_FAIL;
     }
-    char body[513];
+    char body[1025];
     int recvd = httpd_req_recv(req, body, remaining);
     if (recvd <= 0) {
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "recv failed");
@@ -203,6 +208,8 @@ static esp_err_t portal_save(httpd_req_t *req)
     }
     form_get(body, "wifi_pass", cfg.wifi_pass, sizeof(cfg.wifi_pass));
     form_get(body, "bridge_host", cfg.bridge_host, sizeof(cfg.bridge_host));
+    form_get(body, "bridge_lan", cfg.bridge_lan_host, sizeof(cfg.bridge_lan_host));
+    form_get(body, "ts_auth_key", cfg.ts_auth_key, sizeof(cfg.ts_auth_key));
     if (form_get(body, "bridge_port", port_buf, sizeof(port_buf))) {
         int port = atoi(port_buf);
         if (port > 0 && port < 65536) {

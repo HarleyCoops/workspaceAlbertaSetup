@@ -64,22 +64,24 @@ The **Raspberry Pi** runs WorkspaceAlberta, agents, and the harness server. The 
 
 ### Project structure (experiment + later product)
 
-The experiment implements `main`, `wifi`, `bridge`, `ui`, and `nvs_config`. `audio` is still TBD for the full product. LVGL arrives through the Waveshare BSP, not a checked-in `components/lvgl`.
+The experiment implements `main`, `wifi`, `bridge`, `tailscale`, `ui`, and `nvs_config`. `audio` is still TBD for the full product. LVGL arrives through the Waveshare BSP, not a checked-in `components/lvgl`. Tailscale is **MicroLink** (`#include "microlink.h"`), not a custom WireGuard stack.
 
 ```
 firmware/companion/
 ├── CMakeLists.txt
 ├── sdkconfig.defaults
+├── sdkconfig.credentials.example  # empty placeholders; copy locally
 ├── partitions.csv          # Required; referenced by sdkconfig.defaults
 ├── secrets.example         # Placeholders only
 ├── main/
 │   ├── CMakeLists.txt
-│   ├── idf_component.yml   # BSP ^2.0.3 (V2 CO5300 / CST820 path)
+│   ├── idf_component.yml   # BSP ^2.0.3 + MicroLink v2.1.0
 │   ├── main.c              # Experiment entry
 │   ├── wifi.c / wifi.h     # STA + first-run SoftAP
-│   ├── bridge.c / bridge.h # HTTP client → :8788
-│   ├── ui.c / ui.h         # Boot / setup / home
-│   └── nvs_config.c / .h   # wifi_ssid, wifi_pass, bridge_host, bridge_port
+│   ├── tailscale.c / .h    # MicroLink after Wi-Fi
+│   ├── bridge.c / bridge.h # HTTP → :8788 (Tailscale, then LAN)
+│   ├── ui.c / ui.h         # Boot / setup / home (shows tailnet IP)
+│   └── nvs_config.c / .h   # wifi, Tailscale key, Pi hosts
 └── README.md
 ```
 
@@ -112,7 +114,7 @@ The handheld has 5 screens, navigable by touch and swipe.
 |---------|-------------|
 | WiFi SSID | Touch to scan + select, or manual entry |
 | WiFi Password | On-screen keyboard (masked input) |
-| Pi Host | IP address or hostname. Live desk Pi: `192.168.0.11` (`wa-pi5-christian-01`). Do not default the handheld to Tailscale. |
+| Pi Host | Experiment default is the Pi Tailscale IP `100.106.117.119` (`wa-pi5-christian-01`), with LAN fallback `192.168.0.11`. Wi-Fi is the underlay; Tailscale/MicroLink is the path to the Pi. |
 | Pi Port | Full-product sketch: `8799`. **Experiment (implemented): `8788`.** Do not bind 8799 for the listener. |
 | Save button | Writes to NVS, attempts connection |
 
@@ -306,7 +308,7 @@ idf.py -p /dev/ttyUSB0 monitor
 1. Power on the handheld (USB or battery)
 2. Boot screen shows "Connecting…" then fails → Setup screen
 3. Select WiFi network, enter password
-4. Enter Pi host: live desk LAN is `192.168.0.11` (`wa-pi5-christian-01`). Experiment port is **8788** (8799 is the Workspace Alberta app). The Wi-Fi password is entered on-device and is not in git.
+4. Enter the **emc2 Members** password and a Tailscale auth key (on-device only). Experiment port is **8788** (8799 is the Workspace Alberta app). Default Pi host is Tailscale `100.106.117.119` with LAN fallback `192.168.0.11`. Never commit the password or auth key.
 5. Tap Save → connects → Home screen appears
 
 ### Enable bridge on Pi
@@ -355,7 +357,8 @@ If using Tailscale:
 
 The handheld stores **only**:
 - WiFi SSID and password (in NVS, encrypted at rest by ESP32-S3)
-- Pi bridge host and port
+- Tailscale auth key (NVS or gitignored `sdkconfig.credentials` — never committed)
+- Pi Tailscale host, LAN fallback host, and port
 
 It does **not** store:
 - API keys (HF token, etc.)
@@ -422,8 +425,9 @@ Christian’s board is **V2** (CO5300 + CST820). The experiment uses ESP-IDF and
 | Checkout | `~/workspaceAlbertaSetup` (`firmware/companion`, this doc) |
 | LAN | `192.168.0.11/24` on `wlan0`, gateway `192.168.0.1` |
 | Wi-Fi SSID | `emc2 Members` (password entered on the handheld, never committed) |
-| Experiment URL | `http://192.168.0.11:8788` |
-| Tailscale | `100.106.117.119` / `wa-pi5-christian-01.tail397d4d.ts.net` — not the experiment default; the ESP32 cannot reach it unless it joins the tailnet |
+| Experiment URL (primary) | `http://100.106.117.119:8788` (Tailscale) |
+| Experiment URL (fallback) | `http://192.168.0.11:8788` (LAN, if MicroLink is down) |
+| Tailscale | ESP32 joins **harleycoops.github** as `wa-esp32-amoled` via [MicroLink](https://github.com/CamM2325/microlink) v2.1.0 (`#include "microlink.h"`). Pi: `100.106.117.119` / `wa-pi5-christian-01.tail397d4d.ts.net` |
 | :8799 | Workspace Alberta, loopback-only; no bridge key in `~/.config/workspacealberta/config.json` |
 | Pi software | Python 3.12.3. No mosquitto, Flask, or `idf.py` on the Pi |
 
@@ -434,7 +438,7 @@ cd ~/workspaceAlbertaSetup
 python3 scripts/companion-bridge.py
 ```
 
-**LAN-only, no authentication. Do not expose port 8788 to the internet.**
+Listener stays `0.0.0.0:8788` so it is reachable on **both LAN and Tailscale**. No authentication. Do not expose port 8788 to the internet. Do not bind 8799, 3080, 5199, or 49374.
 
 Endpoints (kept small so a later full companion can keep using them):
 
@@ -442,9 +446,11 @@ Endpoints (kept small so a later full companion can keep using them):
 - `POST /ping` and `POST /event` → log JSON, return `{"ok":true,"reply":"Pi heard you at <iso time>","echo": <body>}`
 - `GET /reply/latest` → last ping/event reply text
 
-On the board: NVS/Kconfig defaults are `wifi_ssid=emc2 Members`, `bridge_host=192.168.0.11`, `bridge_port=8788`. **First-run still needs the Wi-Fi password entered on-device** (SoftAP `WA-Companion` at `http://192.168.4.1`, or USB serial `set wifi_pass` / `save`). Never commit the real password. Placeholders live in [`firmware/companion/secrets.example`](../firmware/companion/secrets.example).
+On the board: NVS/Kconfig defaults are `wifi_ssid=emc2 Members`, `bridge_host=100.106.117.119`, `bridge_lan=192.168.0.11`, `bridge_port=8788`, `ts_hostname=wa-esp32-amoled`. **Wi-Fi is the underlay; Tailscale is the path to the Pi.** First-run still needs the Wi-Fi password **and** a reusable Tailscale auth key entered on-device (SoftAP `WA-Companion` at `http://192.168.4.1`, USB serial `set wifi_pass` / `set ts_auth_key` / `save`, or gitignored `sdkconfig.credentials`). Christian generates the key at https://login.tailscale.com/admin/settings/keys for tailnet harleycoops.github and may need to **Approve** `wa-esp32-amoled` in the Tailscale admin. Never commit the password or auth key. Placeholders live in [`firmware/companion/secrets.example`](../firmware/companion/secrets.example).
 
-Flash steps: [`firmware/companion/README.md`](../firmware/companion/README.md). Default target is `http://192.168.0.11:8788`.
+The home screen shows the tailnet IP once MicroLink is up.
+
+Flash steps: [`firmware/companion/README.md`](../firmware/companion/README.md). Default target is `http://100.106.117.119:8788`.
 
 The screens, PTT, approvals, and Whisper sections below are still the **target product**. They are not this experiment.
 
@@ -455,7 +461,7 @@ The screens, PTT, approvals, and Whisper sections below are still the **target p
 | Component | Status |
 |-----------|--------|
 | Design doc | ✅ Complete (this document is the full product spec) |
-| Experiment callback slice | ✅ Device ↔ Pi on **:8788** (boot / setup / home / Call Pi) |
+| Experiment callback slice | ✅ Device ↔ Pi on **:8788** (Wi-Fi underlay, MicroLink tailnet, LAN fallback) |
 | Firmware (full 5-screen product) | 🔜 PTT, approvals, settings still TBD |
 | Full bridge on the WA app (:8799) | 🔜 Not implemented; experiment is a standalone listener |
 | LVGL UI (full spec) | 🔜 Experiment home only |

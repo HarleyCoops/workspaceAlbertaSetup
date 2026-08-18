@@ -16,6 +16,7 @@ firmware/companion/build/
 firmware/companion/managed_components/
 firmware/companion/dependencies.lock
 firmware/companion/secrets
+firmware/companion/sdkconfig.credentials
 scripts/__pycache__/
 __pycache__/
 

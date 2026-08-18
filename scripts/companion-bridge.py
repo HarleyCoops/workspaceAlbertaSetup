@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""LAN-only handheld companion bridge (experiment).
+"""Handheld companion bridge (experiment).
 
-Stdlib only. No authentication. Bind 0.0.0.0:8788 for the Pi LAN test.
+Stdlib only. No authentication. Bind 0.0.0.0:8788 so the ESP32 can
+reach this listener on Tailscale (100.106.117.119) and on LAN
+(192.168.0.11). WiFi is the underlay; Tailscale/MicroLink is the
+preferred path from the board.
 
 Do not expose this port to the internet.
 Do not bind 8799 (Workspace Alberta), 3080 (DeepSeek harness), 5199, or 49374.
-The handheld defaults to the live desk Pi LAN: http://192.168.0.11:8788
-(wa-pi5-christian-01 on wlan0). Tailscale is not the experiment default.
 """
 
 from __future__ import annotations

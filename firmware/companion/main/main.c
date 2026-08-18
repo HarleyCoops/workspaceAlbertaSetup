@@ -32,6 +32,7 @@
 
 #include "bridge.h"
 #include "nvs_config.h"
+#include "tailscale.h"
 #include "ui.h"
 #include "wifi.h"
 
@@ -43,7 +44,22 @@ static bool s_on_home;
 
 static void apply_bridge_target(void)
 {
-    bridge_set_target(s_cfg.bridge_host, s_cfg.bridge_port);
+    bridge_set_targets(s_cfg.bridge_host, s_cfg.bridge_lan_host, s_cfg.bridge_port);
+}
+
+static void refresh_tailnet_ui(void)
+{
+    char ts_ip[16];
+    tailscale_get_ip(ts_ip, sizeof(ts_ip));
+    if (tailscale_is_up() && ts_ip[0] != '\0') {
+        char line[80];
+        snprintf(line, sizeof(line), "Tailscale %s", ts_ip);
+        ui_set_tailnet(line);
+    } else if (nvs_config_has_ts_key(&s_cfg)) {
+        ui_set_tailnet("Tailscale down · LAN fallback");
+    } else {
+        ui_set_tailnet("Tailscale: paste auth key on-device");
+    }
 }
 
 static void on_wifi_saved(const wa_config_t *cfg)
@@ -95,8 +111,15 @@ static void poll_task(void *arg)
                 ui_set_status("WiFi down", false, false);
                 ui_set_reply("Cannot reach the Pi until WiFi is up.");
             } else {
+                char src[16];
+                tailscale_get_ip(src, sizeof(src));
+                if (src[0] == '\0') {
+                    wifi_app_get_ip(src, sizeof(src));
+                }
                 wifi_app_get_ip(ip, sizeof(ip));
-                esp_err_t err = bridge_post_ping(ip, reply, sizeof(reply));
+                (void)ip;
+                esp_err_t err = bridge_post_ping(src, reply, sizeof(reply));
+                refresh_tailnet_ui();
                 if (err == ESP_OK) {
                     ESP_LOGI(TAG, "Pi reply: %s", reply);
                     ui_set_status("Pi answered", true, true);
@@ -118,8 +141,9 @@ static void poll_task(void *arg)
             } else {
                 wifi_app_get_ip(ip, sizeof(ip));
                 esp_err_t err = bridge_get_health(status, sizeof(status));
+                refresh_tailnet_ui();
                 if (err == ESP_OK) {
-                    ESP_LOGI(TAG, "health: %s ip=%s", status, ip);
+                    ESP_LOGI(TAG, "health: %s lan=%s", status, ip);
                     ui_set_status(status, true, true);
                 } else {
                     ESP_LOGW(TAG, "health: Pi unreachable (%s)", status);
@@ -140,7 +164,10 @@ static void print_help(void)
         "  set wifi_ssid <value>\n"
         "  set wifi_pass <value>\n"
         "  set bridge_host <value>\n"
+        "  set bridge_lan <value>\n"
         "  set bridge_port <value>\n"
+        "  set ts_auth_key <value>\n"
+        "  set ts_hostname <value>\n"
         "  save     write NVS and reboot\n"
         "  reboot\n"
         "  help\n\n");
@@ -154,6 +181,12 @@ static void apply_set(const char *key, const char *value)
         strlcpy(s_cfg.wifi_pass, value, sizeof(s_cfg.wifi_pass));
     } else if (strcmp(key, "bridge_host") == 0) {
         strlcpy(s_cfg.bridge_host, value, sizeof(s_cfg.bridge_host));
+    } else if (strcmp(key, "bridge_lan") == 0) {
+        strlcpy(s_cfg.bridge_lan_host, value, sizeof(s_cfg.bridge_lan_host));
+    } else if (strcmp(key, "ts_auth_key") == 0) {
+        strlcpy(s_cfg.ts_auth_key, value, sizeof(s_cfg.ts_auth_key));
+    } else if (strcmp(key, "ts_hostname") == 0) {
+        strlcpy(s_cfg.ts_hostname, value, sizeof(s_cfg.ts_hostname));
     } else if (strcmp(key, "bridge_port") == 0) {
         int port = atoi(value);
         if (port > 0 && port < 65536) {
@@ -172,7 +205,7 @@ static void apply_set(const char *key, const char *value)
 static void serial_task(void *arg)
 {
     (void)arg;
-    char line[160];
+    char line[256];
     size_t used = 0;
     setvbuf(stdin, NULL, _IONBF, 0);
     print_help();
@@ -204,7 +237,10 @@ static void serial_task(void *arg)
             printf("wifi_ssid=%s\n", s_cfg.wifi_ssid);
             printf("wifi_pass=%s\n", s_cfg.wifi_pass[0] ? "(set, not shown)" : "(empty)");
             printf("bridge_host=%s\n", s_cfg.bridge_host);
+            printf("bridge_lan=%s\n", s_cfg.bridge_lan_host);
             printf("bridge_port=%u\n", (unsigned)s_cfg.bridge_port);
+            printf("ts_hostname=%s\n", s_cfg.ts_hostname);
+            printf("ts_auth_key=%s\n", s_cfg.ts_auth_key[0] ? "(set, not shown)" : "(empty)");
         } else if (strcmp(line, "save") == 0) {
             ESP_ERROR_CHECK(nvs_config_save(&s_cfg));
             printf("saved, rebooting\n");
@@ -265,11 +301,21 @@ void app_main(void)
     s_on_home = true;
     ui_show_home();
     if (wifi_app_is_connected()) {
+        ui_set_status("WiFi up. Starting Tailscale…", true, false);
+        if (nvs_config_has_ts_key(&s_cfg)) {
+            if (tailscale_start(s_cfg.ts_auth_key, s_cfg.ts_hostname) != ESP_OK) {
+                ui_set_tailnet("Tailscale start failed · LAN fallback");
+            }
+        } else {
+            ESP_LOGW(TAG, "no Tailscale auth key; LAN fallback only");
+            ui_set_tailnet("Tailscale: paste auth key on-device");
+        }
         ui_set_status("WiFi up. Checking Pi…", true, false);
     } else {
         ESP_LOGW(TAG, "WiFi still down after 30s; home will keep retrying");
         ui_set_status("WiFi down", false, false);
     }
+    refresh_tailnet_ui();
 
     xTaskCreate(poll_task, "pi_poll", 8192, NULL, 4, NULL);
 }

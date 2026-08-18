@@ -22,6 +22,7 @@ static lv_obj_t *s_home;
 static lv_obj_t *s_boot_status;
 static lv_obj_t *s_setup_detail;
 static lv_obj_t *s_home_status;
+static lv_obj_t *s_home_tailnet;
 static lv_obj_t *s_home_reply;
 static lv_obj_t *s_home_dot;
 static ui_call_cb_t s_call_cb;
@@ -96,10 +97,10 @@ static void build_setup(void)
         s_setup,
         "1. Join WiFi  WA-Companion\n"
         "2. Open  http://192.168.4.1\n"
-        "3. Enter wifi_pass (SSID/host\n"
-        "   already defaulted)\n"
+        "3. Enter wifi_pass + Tailscale\n"
+        "   auth key (on-device only)\n"
         "4. Or serial: set wifi_pass …\n"
-        "   save",
+        "   set ts_auth_key …  save",
         COLOR_WHITE,
         &lv_font_montserrat_14);
     lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
@@ -127,11 +128,16 @@ static void build_home(void)
     s_home_status = make_label(s_home, "Waiting…", COLOR_MUTED, &lv_font_montserrat_14);
     lv_label_set_long_mode(s_home_status, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s_home_status, 328);
-    lv_obj_align(s_home_status, LV_ALIGN_TOP_LEFT, 20, 56);
+    lv_obj_align(s_home_status, LV_ALIGN_TOP_LEFT, 20, 52);
+
+    s_home_tailnet = make_label(s_home, "Tailscale: starting…", COLOR_AMBER, &lv_font_montserrat_14);
+    lv_label_set_long_mode(s_home_tailnet, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(s_home_tailnet, 328);
+    lv_obj_align(s_home_tailnet, LV_ALIGN_TOP_LEFT, 20, 80);
 
     lv_obj_t *card = lv_obj_create(s_home);
-    lv_obj_set_size(card, 328, 168);
-    lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 108);
+    lv_obj_set_size(card, 328, 148);
+    lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 118);
     lv_obj_set_style_bg_color(card, lv_color_hex(0x0C1C20), LV_PART_MAIN);
     lv_obj_set_style_border_color(card, lv_color_hex(COLOR_AMBER), LV_PART_MAIN);
     lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
@@ -237,6 +243,17 @@ void ui_set_status(const char *status, bool wifi_ok, bool pi_ok)
             color = COLOR_AMBER;
         }
         lv_obj_set_style_bg_color(s_home_dot, lv_color_hex(color), LV_PART_MAIN);
+    }
+    bsp_display_unlock();
+}
+
+void ui_set_tailnet(const char *line)
+{
+    if (!bsp_display_lock(200)) {
+        return;
+    }
+    if (s_home_tailnet && line) {
+        lv_label_set_text(s_home_tailnet, line);
     }
     bsp_display_unlock();
 }

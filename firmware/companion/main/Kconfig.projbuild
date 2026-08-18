@@ -6,6 +6,7 @@ menu "WorkspaceAlberta Companion Experiment"
         help
             Live LAN SSID for wa-pi5-christian-01. The password is not stored
             in the repo. First-run SoftAP or serial must set wifi_pass.
+            WiFi is the underlay; Tailscale/MicroLink is the path to the Pi.
 
     config WA_WIFI_PASSWORD
         string "WiFi password placeholder (never commit a real password)"
@@ -15,11 +16,17 @@ menu "WorkspaceAlberta Companion Experiment"
             via SoftAP (http://192.168.4.1) or USB serial `set wifi_pass`.
 
     config WA_BRIDGE_HOST
-        string "Pi companion-bridge host (LAN IP)"
+        string "Pi companion-bridge Tailscale host"
+        default "100.106.117.119"
+        help
+            Default Tailscale IP of wa-pi5-christian-01. MagicDNS names are
+            tried at runtime if MicroLink is up.
+
+    config WA_BRIDGE_LAN_HOST
+        string "Pi companion-bridge LAN fallback host"
         default "192.168.0.11"
         help
-            Live wlan0 address of wa-pi5-christian-01. Use the LAN IP.
-            Tailscale is not reachable from this ESP32 unless it joins the tailnet.
+            Used when Tailscale/MicroLink is down.
 
     config WA_BRIDGE_PORT
         int "Pi companion-bridge port"
@@ -29,11 +36,36 @@ menu "WorkspaceAlberta Companion Experiment"
             Must be 8788 for this experiment. 8799 is Workspace Alberta.
             Do not use 3080, 5199, or 49374.
 
+    config WA_TS_HOSTNAME
+        string "This board's Tailscale hostname"
+        default "wa-esp32-amoled"
+        help
+            MicroLink device_name. Appears on tailnet harleycoops.github.
+
+    config WA_TS_AUTH_KEY
+        string "Tailscale auth key placeholder (never commit a real key)"
+        default ""
+        help
+            Must stay empty in the repo. Paste a reusable auth key on-device
+            or in gitignored sdkconfig.credentials.
+
+    config WA_TS_MAGICDNS
+        string "Pi MagicDNS short name"
+        default "wa-pi5-christian-01"
+        help
+            Resolved via MicroLink microlink_resolve() when the tailnet is up.
+
+    config WA_TS_MAGICDNS_FQDN
+        string "Pi MagicDNS FQDN"
+        default "wa-pi5-christian-01.tail397d4d.ts.net"
+        help
+            Fallback MagicDNS name if the short name does not resolve.
+
     config WA_SOFTAP_SSID
         string "First-run SoftAP SSID"
         default "WA-Companion"
         help
-            Open SoftAP used only when NVS/Kconfig have no WiFi SSID.
+            Open SoftAP used only when NVS/Kconfig have no WiFi password.
 
     config WA_HEALTH_INTERVAL_MS
         int "GET /health interval (ms)"

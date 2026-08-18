@@ -51,13 +51,14 @@ BSP v2.0.3 drives **CO5300** and auto-detects CST816S-compatible touch (the V2 c
 ## What the board does
 
 1. Boot screen (dark pine `#071417`, prairie amber `#D4A373`).
-2. If NVS/Kconfig have no `wifi_ssid`: open SoftAP `WA-Companion` and/or USB serial config.
-3. On Wi-Fi: `GET http://{bridge_host}:8788/health` every 5 seconds.
-4. Home: connection status, last Pi reply (2–3 lines), large **Call Pi**.
-5. Tap → `POST /ping` with `{device,event,uptime_ms,ip}`. Show `reply` on screen.
-6. If Wi-Fi or the Pi is down, the screen and the serial log say so.
+2. If NVS has no Wi-Fi password: open SoftAP `WA-Companion` and/or USB serial config.
+3. Join `emc2 Members` (Wi-Fi is the **underlay** only).
+4. After Wi-Fi is up, start **MicroLink** so the board is its own tailnet node (`wa-esp32-amoled` on **harleycoops.github**).
+5. Home shows connection status, **tailnet IP** once MicroLink is up, last Pi reply, large **Call Pi**.
+6. Poll `GET /health` and tap → `POST /ping` to the Pi over Tailscale first (`http://100.106.117.119:8788`). MagicDNS `wa-pi5-christian-01` / `wa-pi5-christian-01.tail397d4d.ts.net` is tried if MicroLink resolve works. LAN `192.168.0.11:8788` is the fallback if Tailscale is down.
+7. If Wi-Fi, Tailscale, or the Pi is down, the screen and the serial log say so.
 
-Default target is the live desk Pi LAN: **`http://192.168.0.11:8788`**. This experiment does not join Tailscale and does not resolve `.local` / `.ts.net` names.
+Default target is the live desk Pi Tailscale IP: **`http://100.106.117.119:8788`**.
 
 ---
 
@@ -71,8 +72,10 @@ Do not change running Pi services (Workspace Alberta on **127.0.0.1:8799** stays
 | Checkout | `~/workspaceAlbertaSetup` |
 | LAN | `192.168.0.11/24` on `wlan0`, gateway `192.168.0.1` |
 | Wi-Fi SSID | `emc2 Members` (password **not** in git) |
-| Experiment URL | `http://192.168.0.11:8788` |
-| Tailscale | `100.106.117.119` / `wa-pi5-christian-01.tail397d4d.ts.net` — **not** the default; the ESP32 cannot reach it unless it joins the tailnet |
+| Experiment URL (primary) | `http://100.106.117.119:8788` (Tailscale) |
+| Experiment URL (fallback) | `http://192.168.0.11:8788` (LAN) |
+| MagicDNS | `wa-pi5-christian-01` / `wa-pi5-christian-01.tail397d4d.ts.net` |
+| Tailnet | **harleycoops.github** — ESP32 joins as `wa-esp32-amoled` via MicroLink |
 | Reserved ports | Do not bind 8799, 3080, 5199, 49374 |
 | Pi toolchain | Python 3.12.3. No mosquitto, Flask, or `idf.py` on the Pi |
 
@@ -80,19 +83,29 @@ Do not change running Pi services (Workspace Alberta on **127.0.0.1:8799** stays
 
 ## First-run config (no secrets in git)
 
-Defaults already set `wifi_ssid=emc2 Members`, `bridge_host=192.168.0.11`, `bridge_port=8788`. **The Wi-Fi password is still entered on the device.** Repo placeholders:
+**Never commit a Tailscale auth key, Wi-Fi password, or token.** Defaults already set `wifi_ssid=emc2 Members`, `bridge_host=100.106.117.119`, `bridge_lan=192.168.0.11`, `bridge_port=8788`, `ts_hostname=wa-esp32-amoled`. **The Wi-Fi password and Tailscale auth key are entered on the device.**
 
-- [`secrets.example`](secrets.example) — SSID and LAN host filled in; `wifi_pass=YOUR_WIFI_PASSWORD`
-- empty `CONFIG_WA_WIFI_PASSWORD` in `sdkconfig.defaults`
+Repo placeholders only:
 
-Until NVS has a password, the board stays on the first-run SoftAP / serial setup screen and does not try to join `emc2 Members` as an open network.
+- [`secrets.example`](secrets.example) — `wifi_pass=YOUR_WIFI_PASSWORD`, `ts_auth_key=tskey-auth-YOUR_KEY`
+- [`sdkconfig.credentials.example`](sdkconfig.credentials.example) — empty `CONFIG_WA_TS_AUTH_KEY` / `CONFIG_ML_TAILSCALE_AUTH_KEY`
+- empty `CONFIG_WA_WIFI_PASSWORD` and `CONFIG_WA_TS_AUTH_KEY` in `sdkconfig.defaults`
+- `sdkconfig.credentials` is gitignored (copy the example on the flash machine)
+
+Until NVS has a Wi-Fi password, the board stays on the first-run SoftAP / serial setup screen and does not try to join `emc2 Members` as an open network. Until NVS has a Tailscale auth key, MicroLink does not start and HTTP uses the LAN fallback.
+
+### Tailscale auth key (Christian)
+
+1. Generate a **reusable** auth key at https://login.tailscale.com/admin/settings/keys for tailnet **harleycoops.github**.
+2. Paste it **only** on the board (SoftAP / USB serial) or in the gitignored `sdkconfig.credentials` on the flash machine. Do not put it in a PR.
+3. After the board appears, **Approve** the new node (`wa-esp32-amoled`) in the Tailscale admin if the tailnet requires approval (same as other new nodes).
 
 ### SoftAP
 
 1. Power the board. Setup appears because the password is not in NVS.
 2. Join Wi-Fi **WA-Companion** (open AP, first-run only).
 3. Open `http://192.168.4.1`.
-4. SSID and Pi host/port are pre-filled. Enter the **emc2 Members** password. Save — the board reboots.
+4. SSID and Pi hosts/port are pre-filled. Enter the **emc2 Members** password and the Tailscale auth key. Save — the board reboots.
 
 ### USB serial
 
@@ -101,12 +114,15 @@ USB-C is the ESP32-S3 native USB port (Waveshare docs). After `idf.py monitor`:
 ```
 set wifi_ssid emc2 Members
 set wifi_pass YOUR_WIFI_PASSWORD
-set bridge_host 192.168.0.11
+set bridge_host 100.106.117.119
+set bridge_lan 192.168.0.11
 set bridge_port 8788
+set ts_hostname wa-esp32-amoled
+set ts_auth_key tskey-auth-YOUR_KEY
 save
 ```
 
-`show` prints the host/port and whether a password is set (it does not print the password).
+`show` prints the hosts/port and whether a password or auth key is set (it does not print secrets).
 
 ---
 
@@ -124,7 +140,16 @@ idf.py -p /dev/ttyACM0 flash monitor
 
 If the port is missing, hold **BOOT**, tap **PWR** / replug USB-C, then flash. Other common names: `/dev/ttyUSB0`, macOS `/dev/cu.usbmodem*`, Windows `COMx`.
 
-Component Manager downloads `waveshare/esp32_s3_touch_amoled_1_8` into `managed_components/` (gitignored).
+Component Manager downloads `waveshare/esp32_s3_touch_amoled_1_8` and **MicroLink v2.1.0** (`#include "microlink.h"`, verified from [CamM2325/microlink](https://github.com/CamM2325/microlink) `components/microlink/include/microlink.h`) into `managed_components/` (gitignored). Their official example uses `EXTRA_COMPONENT_DIRS ../../components` and `REQUIRES microlink`; this project pulls the same component via `idf_component.yml` at tag `v2.1.0`.
+
+MicroLink’s recommended board is **ESP32-S3 + 8MB OPI PSRAM** (they also list a Waveshare AMOLED 2.06). This V2 1.8 board matches that class. Do not implement a custom Tailscale/WireGuard stack.
+
+Optional local secrets overlay (never commit it):
+
+```bash
+cp sdkconfig.credentials.example sdkconfig.credentials
+# paste CONFIG_WA_TS_AUTH_KEY / CONFIG_ML_TAILSCALE_AUTH_KEY locally
+```
 
 ---
 
@@ -137,7 +162,7 @@ cd ~/workspaceAlbertaSetup
 python3 scripts/companion-bridge.py
 ```
 
-Listens on `0.0.0.0:8788`. From the handheld: `http://192.168.0.11:8788`. **LAN-only, no auth. Do not expose to the internet.**
+Listens on `0.0.0.0:8788` so it is reachable on **both** Tailscale (`100.106.117.119`) and LAN (`192.168.0.11`). **No auth. Do not expose to the internet.** Do not touch :3080, :8799, :5199, or :49374.
 
 Example systemd user unit (do not enable it from this repo automatically):
 
@@ -168,16 +193,18 @@ Then tap **Call Pi** on the board.
 firmware/companion/
 ├── CMakeLists.txt
 ├── sdkconfig.defaults
+├── sdkconfig.credentials.example   # empty placeholders; copy locally
 ├── partitions.csv          # Waveshare 00_bsp_quickstart table (16MB)
 ├── secrets.example
 ├── main/
-│   ├── idf_component.yml   # idf >=5.5,<6.1 ; BSP ^2.0.3
+│   ├── idf_component.yml   # BSP ^2.0.3 + MicroLink v2.1.0
 │   ├── Kconfig.projbuild
 │   ├── main.c
 │   ├── nvs_config.c/.h
 │   ├── wifi.c/.h           # STA + first-run SoftAP portal
-│   ├── bridge.c/.h         # GET /health, POST /ping
-│   └── ui.c/.h             # LVGL via BSP
+│   ├── tailscale.c/.h      # MicroLink wrapper (wa-esp32-amoled)
+│   ├── bridge.c/.h         # Tailscale HTTP then LAN fallback
+│   └── ui.c/.h             # LVGL via BSP; home shows tailnet IP
 └── README.md
 ```
 
