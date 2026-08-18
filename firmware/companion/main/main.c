@@ -246,8 +246,8 @@ void app_main(void)
     wifi_app_set_status_cb(on_wifi_status);
     xTaskCreate(serial_task, "serial_cfg", 4096, NULL, 3, NULL);
 
-    if (!nvs_config_has_wifi(&s_cfg)) {
-        ESP_LOGW(TAG, "no WiFi SSID; starting SoftAP %s", CONFIG_WA_SOFTAP_SSID);
+    if (!nvs_config_ready_for_sta(&s_cfg)) {
+        ESP_LOGW(TAG, "WiFi password not in NVS; enter it on-device (SoftAP %s or serial)", CONFIG_WA_SOFTAP_SSID);
         ui_show_setup(CONFIG_WA_SOFTAP_SSID);
         ESP_ERROR_CHECK(wifi_app_start_softap(CONFIG_WA_SOFTAP_SSID, &s_cfg, on_wifi_saved));
         return;

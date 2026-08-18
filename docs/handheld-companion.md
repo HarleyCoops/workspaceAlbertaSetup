@@ -112,8 +112,8 @@ The handheld has 5 screens, navigable by touch and swipe.
 |---------|-------------|
 | WiFi SSID | Touch to scan + select, or manual entry |
 | WiFi Password | On-screen keyboard (masked input) |
-| Pi Host | IP address or hostname (e.g., `192.168.1.100` or `wa-pi5.local`) |
-| Pi Port | Default `8799`, editable |
+| Pi Host | IP address or hostname. Live desk Pi: `192.168.0.11` (`wa-pi5-christian-01`). Do not default the handheld to Tailscale. |
+| Pi Port | Full-product sketch: `8799`. **Experiment (implemented): `8788`.** Do not bind 8799 for the listener. |
 | Save button | Writes to NVS, attempts connection |
 
 **Flow:**
@@ -306,7 +306,7 @@ idf.py -p /dev/ttyUSB0 monitor
 1. Power on the handheld (USB or battery)
 2. Boot screen shows "Connecting…" then fails → Setup screen
 3. Select WiFi network, enter password
-4. Enter Pi host: the IP or hostname of your WorkspaceAlberta Pi (e.g., `192.168.1.100` or `wa-pi5.local`)
+4. Enter Pi host: live desk LAN is `192.168.0.11` (`wa-pi5-christian-01`). Experiment port is **8788** (8799 is the Workspace Alberta app). The Wi-Fi password is entered on-device and is not in git.
 5. Tap Save → connects → Home screen appears
 
 ### Enable bridge on Pi
@@ -414,9 +414,23 @@ Christian’s board is **V2** (CO5300 + CST820). The experiment uses ESP-IDF and
 | Pi listener | [`scripts/companion-bridge.py`](../scripts/companion-bridge.py) | Python 3 stdlib `http.server`, bind `0.0.0.0:8788` |
 | systemd example | [`scripts/companion-bridge.service`](../scripts/companion-bridge.service) | User unit example; do not enable it automatically |
 
-**Run on wa-pi5:**
+**Live desk Pi (confirmed). Do not change running Pi services.**
+
+| Fact | Value |
+|------|--------|
+| Hostname | `wa-pi5-christian-01` |
+| Checkout | `~/workspaceAlbertaSetup` (`firmware/companion`, this doc) |
+| LAN | `192.168.0.11/24` on `wlan0`, gateway `192.168.0.1` |
+| Wi-Fi SSID | `emc2 Members` (password entered on the handheld, never committed) |
+| Experiment URL | `http://192.168.0.11:8788` |
+| Tailscale | `100.106.117.119` / `wa-pi5-christian-01.tail397d4d.ts.net` — not the experiment default; the ESP32 cannot reach it unless it joins the tailnet |
+| :8799 | Workspace Alberta, loopback-only; no bridge key in `~/.config/workspacealberta/config.json` |
+| Pi software | Python 3.12.3. No mosquitto, Flask, or `idf.py` on the Pi |
+
+**Run on wa-pi5-christian-01** (does not enable systemd; does not touch :8799):
 
 ```bash
+cd ~/workspaceAlbertaSetup
 python3 scripts/companion-bridge.py
 ```
 
@@ -428,9 +442,9 @@ Endpoints (kept small so a later full companion can keep using them):
 - `POST /ping` and `POST /event` → log JSON, return `{"ok":true,"reply":"Pi heard you at <iso time>","echo": <body>}`
 - `GET /reply/latest` → last ping/event reply text
 
-On the board: first-run SoftAP `WA-Companion` (`http://192.168.4.1`) or USB serial `set` / `save`. Store `wifi_ssid`, `wifi_pass`, `bridge_host`, `bridge_port` (default **8788**) in NVS. Never commit real passwords. Placeholders live in [`firmware/companion/secrets.example`](../firmware/companion/secrets.example).
+On the board: NVS/Kconfig defaults are `wifi_ssid=emc2 Members`, `bridge_host=192.168.0.11`, `bridge_port=8788`. **First-run still needs the Wi-Fi password entered on-device** (SoftAP `WA-Companion` at `http://192.168.4.1`, or USB serial `set wifi_pass` / `save`). Never commit the real password. Placeholders live in [`firmware/companion/secrets.example`](../firmware/companion/secrets.example).
 
-Flash steps: [`firmware/companion/README.md`](../firmware/companion/README.md). Point `bridge_host` at the Pi’s LAN IP.
+Flash steps: [`firmware/companion/README.md`](../firmware/companion/README.md). Default target is `http://192.168.0.11:8788`.
 
 The screens, PTT, approvals, and Whisper sections below are still the **target product**. They are not this experiment.
 

@@ -165,16 +165,17 @@ static const char *PORTAL_HTML =
     "button{margin-top:16px;background:#D4A373;border:0;padding:12px 20px;font-size:16px}</style></head><body>"
     "<h1>Call Pi setup</h1><p>Experiment only. Values stay on this board in NVS.</p>"
     "<form method=POST action=/save>"
-    "<label>WiFi SSID</label><input name=wifi_ssid required>"
-    "<label>WiFi password</label><input name=wifi_pass type=password>"
+    "<label>WiFi SSID</label><input name=wifi_ssid value='%s' required>"
+    "<label>WiFi password</label><input name=wifi_pass type=password placeholder='enter on device'>"
     "<label>Pi host</label><input name=bridge_host value='%s'>"
     "<label>Pi port</label><input name=bridge_port value='%u'>"
     "<button type=submit>Save and reboot</button></form></body></html>";
 
 static esp_err_t portal_get(httpd_req_t *req)
 {
-    char page[1400];
-    snprintf(page, sizeof(page), PORTAL_HTML, s_portal_seed.bridge_host, (unsigned)s_portal_seed.bridge_port);
+    char page[1600];
+    snprintf(page, sizeof(page), PORTAL_HTML,
+             s_portal_seed.wifi_ssid, s_portal_seed.bridge_host, (unsigned)s_portal_seed.bridge_port);
     httpd_resp_set_type(req, "text/html");
     return httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
 }

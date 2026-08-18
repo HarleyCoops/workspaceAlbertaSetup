@@ -96,10 +96,9 @@ static void build_setup(void)
         s_setup,
         "1. Join WiFi  WA-Companion\n"
         "2. Open  http://192.168.4.1\n"
-        "3. Or USB serial:\n"
-        "   set wifi_ssid …\n"
-        "   set wifi_pass …\n"
-        "   set bridge_host …\n"
+        "3. Enter wifi_pass (SSID/host\n"
+        "   already defaulted)\n"
+        "4. Or serial: set wifi_pass …\n"
         "   save",
         COLOR_WHITE,
         &lv_font_montserrat_14);

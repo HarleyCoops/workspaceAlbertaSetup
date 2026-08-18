@@ -57,32 +57,51 @@ BSP v2.0.3 drives **CO5300** and auto-detects CST816S-compatible touch (the V2 c
 5. Tap → `POST /ping` with `{device,event,uptime_ms,ip}`. Show `reply` on screen.
 6. If Wi-Fi or the Pi is down, the screen and the serial log say so.
 
-Default bridge port is **8788**. Point `bridge_host` at the Pi’s LAN IP (for example `192.168.1.42` on wa-pi5). This experiment does not resolve `.local` names.
+Default target is the live desk Pi LAN: **`http://192.168.0.11:8788`**. This experiment does not join Tailscale and does not resolve `.local` / `.ts.net` names.
+
+---
+
+## Live Pi (confirmed)
+
+Do not change running Pi services (Workspace Alberta on **127.0.0.1:8799** stays as-is; no bridge key in `~/.config/workspacealberta/config.json`).
+
+| Fact | Value |
+| --- | --- |
+| Hostname | `wa-pi5-christian-01` |
+| Checkout | `~/workspaceAlbertaSetup` |
+| LAN | `192.168.0.11/24` on `wlan0`, gateway `192.168.0.1` |
+| Wi-Fi SSID | `emc2 Members` (password **not** in git) |
+| Experiment URL | `http://192.168.0.11:8788` |
+| Tailscale | `100.106.117.119` / `wa-pi5-christian-01.tail397d4d.ts.net` — **not** the default; the ESP32 cannot reach it unless it joins the tailnet |
+| Reserved ports | Do not bind 8799, 3080, 5199, 49374 |
+| Pi toolchain | Python 3.12.3. No mosquitto, Flask, or `idf.py` on the Pi |
 
 ---
 
 ## First-run config (no secrets in git)
 
-Never commit real Wi-Fi passwords or tokens. Repo placeholders:
+Defaults already set `wifi_ssid=emc2 Members`, `bridge_host=192.168.0.11`, `bridge_port=8788`. **The Wi-Fi password is still entered on the device.** Repo placeholders:
 
-- [`secrets.example`](secrets.example)
-- empty `CONFIG_WA_WIFI_SSID` / `CONFIG_WA_WIFI_PASSWORD` in `sdkconfig.defaults`
+- [`secrets.example`](secrets.example) — SSID and LAN host filled in; `wifi_pass=YOUR_WIFI_PASSWORD`
+- empty `CONFIG_WA_WIFI_PASSWORD` in `sdkconfig.defaults`
+
+Until NVS has a password, the board stays on the first-run SoftAP / serial setup screen and does not try to join `emc2 Members` as an open network.
 
 ### SoftAP
 
-1. Power the board. Setup screen appears if SSID is empty.
+1. Power the board. Setup appears because the password is not in NVS.
 2. Join Wi-Fi **WA-Companion** (open AP, first-run only).
 3. Open `http://192.168.4.1`.
-4. Enter SSID, password, Pi LAN IP, port `8788`. Save — the board reboots.
+4. SSID and Pi host/port are pre-filled. Enter the **emc2 Members** password. Save — the board reboots.
 
 ### USB serial
 
 USB-C is the ESP32-S3 native USB port (Waveshare docs). After `idf.py monitor`:
 
 ```
-set wifi_ssid YOUR_SSID
-set wifi_pass YOUR_PASSWORD
-set bridge_host 192.168.1.42
+set wifi_ssid emc2 Members
+set wifi_pass YOUR_WIFI_PASSWORD
+set bridge_host 192.168.0.11
 set bridge_port 8788
 save
 ```
@@ -109,16 +128,16 @@ Component Manager downloads `waveshare/esp32_s3_touch_amoled_1_8` into `managed_
 
 ---
 
-## Run the Pi listener (wa-pi5)
+## Run the Pi listener (wa-pi5-christian-01)
 
-On the Raspberry Pi, **not** on :8799 (Workspace Alberta) and **not** on :3080 (DeepSeek harness):
+On the Raspberry Pi, from `~/workspaceAlbertaSetup`. **Not** on :8799 (Workspace Alberta, loopback-only) and **not** on :3080 (DeepSeek harness). Do not edit running WA services.
 
 ```bash
 cd ~/workspaceAlbertaSetup
 python3 scripts/companion-bridge.py
 ```
 
-Listens on `0.0.0.0:8788`. **LAN-only, no auth. Do not expose to the internet.**
+Listens on `0.0.0.0:8788`. From the handheld: `http://192.168.0.11:8788`. **LAN-only, no auth. Do not expose to the internet.**
 
 Example systemd user unit (do not enable it from this repo automatically):
 

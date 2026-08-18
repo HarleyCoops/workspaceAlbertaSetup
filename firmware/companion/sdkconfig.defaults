@@ -34,10 +34,11 @@ CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM=y
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=16
 CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=64
 
-# Experiment placeholders only — never put real passwords here.
-CONFIG_WA_WIFI_SSID=""
+# Live LAN defaults (wa-pi5-christian-01). Password stays empty — enter it
+# on the device. Never commit a real Wi-Fi password.
+CONFIG_WA_WIFI_SSID="emc2 Members"
 CONFIG_WA_WIFI_PASSWORD=""
-CONFIG_WA_BRIDGE_HOST="192.168.1.100"
+CONFIG_WA_BRIDGE_HOST="192.168.0.11"
 CONFIG_WA_BRIDGE_PORT=8788
 CONFIG_WA_SOFTAP_SSID="WA-Companion"
 CONFIG_WA_HEALTH_INTERVAL_MS=5000

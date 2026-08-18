@@ -78,9 +78,10 @@ esp_err_t nvs_config_load(wa_config_t *cfg)
     }
 
     nvs_close(handle);
-    ESP_LOGI(TAG, "loaded host=%s port=%u ssid_set=%s",
+    ESP_LOGI(TAG, "loaded host=%s port=%u ssid_set=%s pass_set=%s",
              cfg->bridge_host, (unsigned)cfg->bridge_port,
-             nvs_config_has_wifi(cfg) ? "yes" : "no");
+             nvs_config_has_wifi(cfg) ? "yes" : "no",
+             nvs_config_ready_for_sta(cfg) ? "yes" : "no");
     return ESP_OK;
 }
 
@@ -116,4 +117,9 @@ esp_err_t nvs_config_save(const wa_config_t *cfg)
 bool nvs_config_has_wifi(const wa_config_t *cfg)
 {
     return cfg != NULL && cfg->wifi_ssid[0] != '\0';
+}
+
+bool nvs_config_ready_for_sta(const wa_config_t *cfg)
+{
+    return nvs_config_has_wifi(cfg) && cfg->wifi_pass[0] != '\0';
 }

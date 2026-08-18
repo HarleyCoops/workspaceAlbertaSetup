@@ -1,26 +1,25 @@
 menu "WorkspaceAlberta Companion Experiment"
 
     config WA_WIFI_SSID
-        string "WiFi SSID placeholder (prefer NVS / SoftAP / serial)"
-        default ""
+        string "WiFi SSID (password is still entered on-device)"
+        default "emc2 Members"
         help
-            Optional compile-time SSID. Leave empty and use first-run SoftAP
-            or serial `set wifi_ssid`. Never commit a real network name that
-            identifies a private LAN if you can avoid it.
+            Live LAN SSID for wa-pi5-christian-01. The password is not stored
+            in the repo. First-run SoftAP or serial must set wifi_pass.
 
     config WA_WIFI_PASSWORD
         string "WiFi password placeholder (never commit a real password)"
         default ""
         help
-            Optional compile-time password. Must stay empty in the repo.
-            Store the real password in NVS via SoftAP or serial.
+            Must stay empty in the repo. Enter the real password on the board
+            via SoftAP (http://192.168.4.1) or USB serial `set wifi_pass`.
 
     config WA_BRIDGE_HOST
-        string "Pi companion-bridge host (LAN IP or .local name)"
-        default "192.168.1.100"
+        string "Pi companion-bridge host (LAN IP)"
+        default "192.168.0.11"
         help
-            Raspberry Pi hosting scripts/companion-bridge.py.
-            Example: 192.168.1.42 or wa-pi5.local
+            Live wlan0 address of wa-pi5-christian-01. Use the LAN IP.
+            Tailscale is not reachable from this ESP32 unless it joins the tailnet.
 
     config WA_BRIDGE_PORT
         int "Pi companion-bridge port"

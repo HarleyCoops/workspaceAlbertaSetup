@@ -15,7 +15,7 @@ static uint16_t s_port = 8788;
 
 void bridge_set_target(const char *host, uint16_t port)
 {
-    strlcpy(s_host, host ? host : "192.168.1.100", sizeof(s_host));
+    strlcpy(s_host, host ? host : "192.168.0.11", sizeof(s_host));
     s_port = port ? port : 8788;
     s_resolved[0] = '\0';
     ESP_LOGI(TAG, "target http://%s:%u", s_host, (unsigned)s_port);

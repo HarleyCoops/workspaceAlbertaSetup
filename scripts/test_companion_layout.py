@@ -54,7 +54,11 @@ class CompanionLayoutTests(unittest.TestCase):
         secrets = (FIRMWARE / "secrets.example").read_text(encoding="utf-8")
         defaults = (FIRMWARE / "sdkconfig.defaults").read_text(encoding="utf-8")
         self.assertIn("YOUR_WIFI_PASSWORD", secrets)
+        self.assertIn("wifi_ssid=emc2 Members", secrets)
+        self.assertIn("bridge_host=192.168.0.11", secrets)
+        self.assertIn('CONFIG_WA_WIFI_SSID="emc2 Members"', defaults)
         self.assertIn('CONFIG_WA_WIFI_PASSWORD=""', defaults)
+        self.assertIn('CONFIG_WA_BRIDGE_HOST="192.168.0.11"', defaults)
         self.assertIn("CONFIG_WA_BRIDGE_PORT=8788", defaults)
         self.assertNotIn("wifi_pass=", defaults)
         self.assertRegex(secrets, r"wifi_pass=YOUR_WIFI_PASSWORD")
@@ -69,6 +73,9 @@ class CompanionLayoutTests(unittest.TestCase):
         docs = (ROOT / "docs" / "handheld-companion.md").read_text(encoding="utf-8")
         self.assertIn("Experiment callback slice", docs)
         self.assertIn("8788", docs)
+        self.assertIn("192.168.0.11", docs)
+        self.assertIn("wa-pi5-christian-01", docs)
+        self.assertIn("emc2 Members", docs)
         self.assertIn("remains the Workspace Alberta chat app", docs)
 
 

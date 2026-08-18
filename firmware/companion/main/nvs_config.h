@@ -25,6 +25,7 @@ void nvs_config_load_defaults(wa_config_t *cfg);
 esp_err_t nvs_config_load(wa_config_t *cfg);
 esp_err_t nvs_config_save(const wa_config_t *cfg);
 bool nvs_config_has_wifi(const wa_config_t *cfg);
+bool nvs_config_ready_for_sta(const wa_config_t *cfg);
 
 #ifdef __cplusplus
 }
