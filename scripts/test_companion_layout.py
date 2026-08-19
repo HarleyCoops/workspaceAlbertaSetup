@@ -16,6 +16,7 @@ class CompanionLayoutTests(unittest.TestCase):
     def test_required_firmware_files(self) -> None:
         required = [
             FIRMWARE / "CMakeLists.txt",
+            FIRMWARE / "dependencies.lock",
             FIRMWARE / "sdkconfig.defaults",
             FIRMWARE / "partitions.csv",
             FIRMWARE / "secrets.example",
@@ -35,6 +36,7 @@ class CompanionLayoutTests(unittest.TestCase):
             FIRMWARE / "main" / "tailscale.c",
             FIRMWARE / "main" / "tailscale.h",
             FIRMWARE / "sdkconfig.credentials.example",
+            ROOT / ".github" / "workflows" / "companion-firmware.yml",
         ]
         missing = [str(path.relative_to(ROOT)) for path in required if not path.is_file()]
         self.assertEqual(missing, [])
@@ -92,6 +94,27 @@ class CompanionLayoutTests(unittest.TestCase):
         self.assertIn("wa-esp32-amoled", kconfig)
         gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("firmware/companion/sdkconfig.credentials", gitignore)
+        self.assertNotIn("firmware/companion/dependencies.lock", gitignore)
+        self.assertIn("Wno-error=stringop-truncation", cmake)
+
+    def test_locked_build_graph(self) -> None:
+        lock = (FIRMWARE / "dependencies.lock").read_text(encoding="utf-8")
+        self.assertIn("version: 5.5.5", lock)
+        self.assertIn("version: 2.0.3", lock)
+        self.assertIn("espressif/esp_lcd_co5300:", lock)
+        self.assertIn("version: 2.1.0", lock)
+        self.assertIn("microlink:", lock)
+        self.assertIn("wireguard_lwip:", lock)
+        self.assertIn("version: 5a60e240c5a469999ddaa503dae52417a8b7c6c4", lock)
+        self.assertIn("target: esp32s3", lock)
+
+    def test_firmware_build_workflow(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "companion-firmware.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("espressif/idf:v5.5.5", workflow)
+        self.assertIn("idf.py set-target esp32s3", workflow)
+        self.assertIn("idf.py build", workflow)
 
     def test_no_committed_secrets(self) -> None:
         scanned = []

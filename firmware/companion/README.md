@@ -128,7 +128,7 @@ save
 
 ## Flash on USB-C (developer machine)
 
-Need **ESP-IDF v5.5.x** (Waveshare’s verified matrix is IDF `>=5.5,<6.1`; their CI uses 5.5.5). This repo does not compile ESP-IDF in CI — build on a machine with IDF installed.
+Need **ESP-IDF v5.5.x** (Waveshare’s verified matrix is IDF `>=5.5,<6.1`). This firmware is compiled in CI with the exact official `espressif/idf:v5.5.5` image. `dependencies.lock` pins the resolved Waveshare BSP, display/touch drivers, LVGL, MicroLink v2.1.0 commit, and sibling WireGuard component.
 
 ```bash
 cd firmware/companion
@@ -141,6 +141,8 @@ idf.py -p /dev/ttyACM0 flash monitor
 If the port is missing, hold **BOOT**, tap **PWR** / replug USB-C, then flash. Other common names: `/dev/ttyUSB0`, macOS `/dev/cu.usbmodem*`, Windows `COMx`.
 
 Component Manager downloads `waveshare/esp32_s3_touch_amoled_1_8` and **MicroLink v2.1.0** (`#include "microlink.h"`, verified from [CamM2325/microlink](https://github.com/CamM2325/microlink) `components/microlink/include/microlink.h`) into `managed_components/` (gitignored). Their official example uses `EXTRA_COMPONENT_DIRS ../../components` and `REQUIRES microlink`; this project pulls the same component via `idf_component.yml` at tag `v2.1.0`.
+
+ESP-IDF 5.5.5 uses GCC 14 and promotes `stringop-truncation` to an error. MicroLink v2.1.0 contains two bounded, null-terminated `strncpy` patterns that trigger that diagnostic. The project downgrades only that warning and only on the `microlink` component target; warnings in the companion firmware remain errors.
 
 MicroLink’s recommended board is **ESP32-S3 + 8MB OPI PSRAM** (they also list a Waveshare AMOLED 2.06). This V2 1.8 board matches that class. Do not implement a custom Tailscale/WireGuard stack.
 
@@ -192,6 +194,7 @@ Then tap **Call Pi** on the board.
 ```
 firmware/companion/
 ├── CMakeLists.txt
+├── dependencies.lock       # Reproducible IDF 5.5.5 component graph
 ├── sdkconfig.defaults
 ├── sdkconfig.credentials.example   # empty placeholders; copy locally
 ├── partitions.csv          # Waveshare 00_bsp_quickstart table (16MB)

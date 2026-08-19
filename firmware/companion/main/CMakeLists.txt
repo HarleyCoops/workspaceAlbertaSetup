@@ -31,3 +31,12 @@ if("lvgl__lvgl" IN_LIST build_components)
         target_compile_options(${LVGL_LIB} PRIVATE -Wno-error=attributes)
     endif()
 endif()
+
+# MicroLink v2.1.0 has two bounded strncpy calls that GCC 14 diagnoses as
+# stringop-truncation even though the destination buffers are zero-initialized.
+# ESP-IDF 5.5.5 promotes that warning to an error. Keep the exception scoped to
+# the pinned upstream component so warnings in this firmware still fail builds.
+idf_component_get_property(MICROLINK_LIB microlink COMPONENT_LIB)
+if(TARGET ${MICROLINK_LIB})
+    target_compile_options(${MICROLINK_LIB} PRIVATE -Wno-error=stringop-truncation)
+endif()
