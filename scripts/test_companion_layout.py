@@ -113,6 +113,7 @@ class CompanionLayoutTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("espressif/idf:v5.5.5", workflow)
+        self.assertIn('. "$IDF_PATH/export.sh"', workflow)
         self.assertIn("idf.py set-target esp32s3", workflow)
         self.assertIn("idf.py build", workflow)
 

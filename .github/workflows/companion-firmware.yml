@@ -34,5 +34,6 @@ jobs:
       - name: Build ESP32-S3 firmware
         working-directory: firmware/companion
         run: |
+          . "$IDF_PATH/export.sh"
           idf.py set-target esp32s3
           idf.py build
