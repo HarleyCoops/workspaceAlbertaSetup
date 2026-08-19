@@ -1,0 +1,22 @@
+# Verified 2026-08-18:
+# - Waveshare BSP ^2.0.3 (V2 CO5300 / CST820)
+# - MicroLink v2.1.0 from https://github.com/CamM2325/microlink
+#   Official include: #include "microlink.h"
+#   (components/microlink/include/microlink.h)
+#   Official example uses EXTRA_COMPONENT_DIRS ../../components
+#   and REQUIRES microlink. wireguard_lwip is a sibling component.
+version: "1.0.0"
+
+dependencies:
+  idf: ">=5.5,<6.1"
+  waveshare/esp32_s3_touch_amoled_1_8:
+    version: "^2.0.3"
+    public: true
+  microlink:
+    git: https://github.com/CamM2325/microlink.git
+    version: v2.1.0
+    path: components/microlink
+  wireguard_lwip:
+    git: https://github.com/CamM2325/microlink.git
+    version: v2.1.0
+    path: components/microlink/components/wireguard_lwip
