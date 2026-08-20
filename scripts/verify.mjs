@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// Smoke checks for start-helper env flags + the OpenAI/Composio tool loop.
+// Smoke checks for start-helper env flags, the OpenAI/Composio tool loop,
+// and the Grok model catalog default.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { electronArgs, electronEnv, serverLaunch, waitForHttp } from "./start-desktop.mjs";
 import { accumulateToolCallDelta, normalizeToolCalls, runOpenAITurn } from "../server/drivers/openaiCompat.ts";
 import { COMPOSIO_META_TOOLS, fallbackComposioOpenAITools } from "../server/composio.ts";
+import { GrokDriver, GROK_DEFAULT_MODEL } from "../server/drivers/grok.ts";
 
 const linuxEnv = electronEnv({ PATH: "/usr/bin" }, "linux");
 assert.equal(linuxEnv.ELECTRON_DISABLE_SANDBOX, "1");
@@ -114,4 +117,14 @@ const wport = waiter.address().port;
 assert.equal(await waitForHttp(`http://127.0.0.1:${wport}/`, { timeoutMs: 2_000 }), true);
 waiter.close();
 
-console.log("verify: start helper + Composio tool loop OK");
+assert.equal(GROK_DEFAULT_MODEL, "grok-4.6");
+assert.equal(GrokDriver.models.default, "grok-4.6");
+assert.ok(
+  GrokDriver.models.options.some((option) => option.id === "grok-4.6"),
+  "Grok picker must include grok-4.6",
+);
+const grokSrc = readFileSync(new URL("../server/drivers/grok.ts", import.meta.url), "utf8");
+assert.match(grokSrc, /generateText:[\s\S]*GROK_DEFAULT_MODEL/);
+assert.doesNotMatch(grokSrc, /generateText:[\s\S]*"grok-3-mini"/);
+
+console.log("verify: start helper + Composio tool loop + Grok 4.6 catalog OK");
