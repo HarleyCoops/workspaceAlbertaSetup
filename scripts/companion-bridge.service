@@ -1,0 +1,25 @@
+# Example systemd user unit for the handheld companion experiment.
+# Do not enable this automatically. Copy and adjust paths on wa-pi5 first.
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/companion-bridge.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user start companion-bridge.service
+#
+# LAN-only. No authentication. Port 8788.
+# Do not expose to the internet. Do not bind 8799 / 3080 / 5199 / 49374.
+
+[Unit]
+Description=WorkspaceAlberta handheld companion bridge (LAN experiment, no auth)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/workspaceAlbertaSetup/scripts/companion-bridge.py
+WorkingDirectory=%h/workspaceAlbertaSetup
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
