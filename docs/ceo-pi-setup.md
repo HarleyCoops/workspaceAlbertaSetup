@@ -6,12 +6,14 @@ This runbook covers first-boot setup for WorkspaceAlberta CEO productivity termi
 
 The CEO stack focuses on hyperproductive AI-assisted workflows:
 
-- **1Password** for secure credential and secrets management
 - **Tailscale** for secure remote support
-- **Codex CLI** for AI pair programming from the terminal
-- **ChatGPT / Codex Desktop** for conversational AI on the desktop
-- **OpenCode** for MCP-first agent workflows
-- **WorkspaceAlberta chat app** — the Telegram-style AI bot interface from this repo
+- **Node.js 22** (NodeSource) plus `build-essential` / `python3` for native npm modules
+- **DeepSeek Harness** (`@deepseek-ai/dsh`) — official published CLI, not a from-source monorepo build
+- **Codex CLI** and **Claude Code** for AI pair programming and Composio tools
+- **ChatGPT / Codex Desktop** (Linux arm64 `.deb`) for conversational AI on the desktop
+- **OpenCode / OpenCode2** for MCP-first agent workflows
+- **WorkspaceAlberta chat app** — the Telegram-style AI bot interface from this repo (`pnpm start` if no release `.deb`)
+- **1Password** (optional) for credential and secrets management
 
 This installer is separate from the Hermes appliance stack. Use the Hermes installer (in the separate `HarleyCoops/WorkspaceAlberta` repo) if you need the branded dashboard, procurement MCP agents, and local gateway services.
 
@@ -19,8 +21,9 @@ This installer is separate from the Hermes appliance stack. Use the Hermes insta
 
 ## Prerequisites
 
-- Raspberry Pi 5 16GB (or Ubuntu 24.04+ VM for testing)
+- Raspberry Pi 5 16GB, official 27W USB-C wall supply (or Ubuntu 24.04+ VM for testing)
 - Fresh Raspberry Pi OS Bookworm or Ubuntu 24.04/26.04 ARM64
+- Hostname example: `wa-pi5-christian-01`
 - Internet connection
 - A non-root user with sudo access
 - Optional: Tailscale auth key from the admin console
@@ -58,15 +61,18 @@ All configuration is through environment variables. All are optional with sensib
 | `SUPPORT_USER` | `support` | Remote support user account |
 | `TS_AUTHKEY` | (none) | Tailscale auth key for unattended join |
 | `TS_TAGS` | `tag:wa-terminal,tag:wa-pi5` | Tailscale device tags |
-| `INSTALL_1PASSWORD` | `1` | Install 1Password desktop + CLI |
-| `INSTALL_CODEX_DESKTOP` | `1` | Install ChatGPT / Codex desktop app |
+| `INSTALL_1PASSWORD` | `1` | Install 1Password desktop + CLI (optional product; set `0` to skip) |
+| `INSTALL_CODEX_DESKTOP` | `1` | Install ChatGPT / Codex desktop app (Linux arm64/amd64 `.deb`) |
 | `INSTALL_OPENCODE` | `1` | Install OpenCode CLI |
 | `INSTALL_CODEX_CLI` | `1` | Install Codex CLI |
+| `INSTALL_CLAUDE_CODE` | `1` | Install Claude Code CLI (`@anthropic-ai/claude-code`) |
 | `INSTALL_TAILSCALE` | `1` | Install and configure Tailscale |
+| `INSTALL_NODE` | `1` | Install Node.js 22 from NodeSource (`/usr/bin/node`) |
+| `INSTALL_DSH` | `1` | Install DeepSeek Harness (`@deepseek-ai/dsh`) |
 | `INSTALL_WA_CHAT_APP` | `1` | Install WorkspaceAlberta chat app from releases |
 | `INSTALL_HERMES_APPLIANCE` | `0` | Also run the Hermes appliance installer (from separate repo) |
 | `INSTALL_OPENCODE2_LAYOUT` | `1` | Install OpenCode2 always-on dual-display layout |
-| `CLONE_REPO` | `1` | Clone workspaceAlbertaSetup to ~/workspaceAlbertaSetup |
+| `CLONE_REPO` | `1` | Pull or clone this repo (defaults to the tree that contains the installer) |
 | `SKIP_APT_UPGRADE` | `0` | Skip apt full-upgrade for faster re-runs |
 
 ---
@@ -77,9 +83,32 @@ All configuration is through environment variables. All are optional with sensib
 
 ```text
 curl ca-certificates tmux vim git htop jq unattended-upgrades
+build-essential python3
 ```
 
+`build-essential` (provides `g++`) and `python3` must be present before any native npm build. DeepSeek Harness's `node-pty` addon fails without them.
+
 Unattended-upgrades is enabled to keep security patches current.
+
+### Node.js 22 (NodeSource)
+
+Installs Node 22 via the NodeSource `setup_22.x` script when `/usr/bin/node` is missing or older than **22.19** (Node 24+ also satisfies DeepSeek Harness).
+
+Desktop terminals can pick up an older Node earlier on `PATH`. Use `/usr/bin/node` and `/usr/bin/npm`. Do not treat an npm 12 upgrade as a required step.
+
+Skip with `INSTALL_NODE=0`.
+
+### DeepSeek Harness
+
+Installs the official published CLI, not a from-source monorepo checkout (too heavy on the Pi):
+
+```bash
+sudo /usr/bin/npm i -g @deepseek-ai/dsh
+```
+
+The binary lands at `/usr/bin/dsh`. Launch with `dsh web` from the Ubuntu Terminal app (not from inside the WorkspaceAlberta Electron window). Cwd does not matter. The UI binds `http://127.0.0.1:3080` only. Paste a DeepSeek API key in **Settings → Models**. That key is separate from WorkspaceAlberta's in-app DeepSeek driver.
+
+Skip with `INSTALL_DSH=0`.
 
 ### Support user
 
@@ -130,6 +159,18 @@ Falls back to npm if the shell script fails:
 npm install -g @openai/codex
 ```
 
+### Claude Code CLI
+
+Installs the default Composio tool engine:
+
+```bash
+sudo /usr/bin/npm i -g @anthropic-ai/claude-code
+```
+
+Hugging Face / Llama in WorkspaceAlberta is text-only. Claude or Codex is required for Gmail / Drive / Slack / GitHub.
+
+Skip with `INSTALL_CLAUDE_CODE=0`.
+
 ### ChatGPT / Codex Desktop
 
 Downloads and installs the official Linux desktop app:
@@ -164,13 +205,16 @@ Attempts to download and install the Linux `.deb` from this repo's GitHub releas
 - ARM64: `workspacealberta_arm64.deb`
 - AMD64: `workspacealberta_amd64.deb`
 
-If no release exists yet, the installer gracefully skips this step and suggests building from source:
+If no release exists yet, the installer gracefully skips this step. Run the app from this repo:
 
 ```bash
 cd ~/workspaceAlbertaSetup
+git pull
 pnpm install
-pnpm package:pi
+pnpm start
 ```
+
+`pnpm start` launches `scripts/start-desktop.mjs` (harness on `127.0.0.1:8799`, Vite on `127.0.0.1:5199`, then Electron). `pnpm package:pi` is optional if you want a `.deb`.
 
 Skip with `INSTALL_WA_CHAT_APP=0`.
 
@@ -202,9 +246,9 @@ By default this is off (`0`) because:
 
 After the installer completes, open a new terminal and complete these steps:
 
-### 1. Sign into 1Password
+### 1. Sign into 1Password (optional)
 
-Launch 1Password from the applications menu and sign in with your CEO / business account. Enable browser integration if prompted for autofill in Chromium/Firefox.
+Launch 1Password from the applications menu and sign in with your CEO / business account. Enable browser integration if prompted for autofill in Chromium/Firefox. Skip if you are not using 1Password.
 
 ### 2. Sign into ChatGPT Desktop
 
@@ -217,6 +261,22 @@ codex
 ```
 
 Follow the browser sign-in flow to authenticate.
+
+### 3b. Authenticate Claude Code
+
+```bash
+claude
+```
+
+Required (or Codex) for Composio tools. HF/Llama is text-only.
+
+### 3c. Launch DeepSeek Harness
+
+```bash
+dsh web
+```
+
+Open `http://127.0.0.1:3080` on the Pi and paste a DeepSeek API key in Settings → Models. Separate from the in-app DeepSeek driver.
 
 ### 4. Authenticate OpenCode
 
@@ -243,18 +303,30 @@ systemctl --user start wa-terminal-tmux
 
 ### 5. Configure WorkspaceAlberta Chat App
 
-Launch WorkspaceAlberta from the applications menu:
+If a `.deb` was installed, launch WorkspaceAlberta from the applications menu. Otherwise from this repo:
+
+```bash
+cd ~/workspaceAlbertaSetup
+git pull
+pnpm install
+pnpm start
+```
+
+Vite listens on `127.0.0.1:5199`. Hugging Face / Llama is optional **text-only** inference. Claude or Codex is required for Composio tools.
+
 - Open **App Settings** (gear icon in sidebar)
-- Paste your [Hugging Face token](https://huggingface.co/settings/tokens)
-- Start chatting with AI bots
+- Paste your [Hugging Face token](https://huggingface.co/settings/tokens) only if you want HF text inference
+- Paste a Composio Connect key (`ck_…`) after Claude or Codex is signed in
 
 ### 6. Complete Tailscale setup (if no auth key was provided)
 
 ```bash
-sudo tailscale up --advertise-tags="tag:wa-terminal,tag:wa-pi5" --ssh
+sudo tailscale up --ssh --hostname="$(hostname)" --advertise-tags="tag:wa-terminal,tag:wa-pi5"
 ```
 
 Then approve the device in the Tailscale admin console.
+
+`tailscale ssh user@<hostname>` works from a Windows desktop on the same tailnet. For unattended commands, add a dedicated ed25519 key — see [Dedicated OpenSSH key from Windows](tailscale-pi-remote-support.md#dedicated-openssh-key-from-windows) in the remote support runbook.
 
 ---
 
@@ -275,9 +347,16 @@ tailscale ip -4
 1password --version
 op --version
 
+# Node + DeepSeek Harness
+/usr/bin/node -v
+/usr/bin/npm -v
+/usr/bin/dsh --help
+
 # AI tools
 codex --version
+claude --version
 opencode --version
+opencode2 --version
 dpkg -l | grep chatgpt
 
 # OpenCode2 layout (if installed)

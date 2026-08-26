@@ -9,9 +9,13 @@ set -euo pipefail
 # before running this script.
 #
 # This installer sets up the hyperproductive CEO stack:
-# - 1Password for secrets and password management
+# - 1Password for secrets and password management (optional)
 # - Tailscale for remote support
+# - Node.js 22 (NodeSource) + build-essential for native npm modules
+# - DeepSeek Harness CLI (@deepseek-ai/dsh) — published package, not a
+#   from-source monorepo build
 # - Codex CLI + ChatGPT desktop for AI-assisted work
+# - Claude Code CLI (required, with Codex, for Composio tools)
 # - OpenCode for MCP-first agent workflows
 # - WorkspaceAlberta Linux chat app (from this repo's releases)
 #
@@ -28,12 +32,19 @@ INSTALL_1PASSWORD="${INSTALL_1PASSWORD:-1}"
 INSTALL_CODEX_DESKTOP="${INSTALL_CODEX_DESKTOP:-1}"
 INSTALL_OPENCODE="${INSTALL_OPENCODE:-1}"
 INSTALL_CODEX_CLI="${INSTALL_CODEX_CLI:-1}"
+INSTALL_CLAUDE_CODE="${INSTALL_CLAUDE_CODE:-1}"
 INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-1}"
+INSTALL_NODE="${INSTALL_NODE:-1}"
+INSTALL_DSH="${INSTALL_DSH:-1}"
 INSTALL_WA_CHAT_APP="${INSTALL_WA_CHAT_APP:-1}"
 INSTALL_HERMES_APPLIANCE="${INSTALL_HERMES_APPLIANCE:-0}"
 INSTALL_OPENCODE2_LAYOUT="${INSTALL_OPENCODE2_LAYOUT:-1}"
 CLONE_REPO="${CLONE_REPO:-1}"
 SKIP_APT_UPGRADE="${SKIP_APT_UPGRADE:-0}"
+
+# Repo this script lives in (needed before the clone step for OpenCode2 layout).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -44,6 +55,25 @@ err() { printf '\n\033[1;31mERROR:\033[0m %s\n' "$*" >&2; }
 
 require_command() {
   command -v "$1" >/dev/null 2>&1
+}
+
+# DeepSeek Harness needs Node 22.19+ or 24+. Desktop terminals can pick up an
+# older Node earlier on PATH — prefer /usr/bin/node after NodeSource.
+node_meets_dsh() {
+  local ver major minor
+  ver="${1#v}"
+  major="${ver%%.*}"
+  minor="${ver#*.}"
+  minor="${minor%%.*}"
+  major="${major:-0}"
+  minor="${minor:-0}"
+  if [ "$major" -ge 24 ]; then
+    return 0
+  fi
+  if [ "$major" -eq 22 ] && [ "$minor" -ge 19 ]; then
+    return 0
+  fi
+  return 1
 }
 
 # Detect architecture for package downloads
@@ -90,7 +120,9 @@ sudo apt-get install -y \
   git \
   htop \
   jq \
-  unattended-upgrades
+  unattended-upgrades \
+  build-essential \
+  python3
 
 log "Enabling unattended-upgrades"
 sudo systemctl enable --now unattended-upgrades || warn "unattended-upgrades service may already be enabled"
@@ -154,6 +186,63 @@ if [ "$INSTALL_TAILSCALE" = "1" ]; then
   fi
 else
   log "Skipping Tailscale installation (INSTALL_TAILSCALE=0)"
+fi
+
+# -----------------------------------------------------------------------------
+# Node.js 22 (NodeSource) — DeepSeek Harness and npm global CLIs
+# Desktop terminals can pick up an older Node on PATH. Use /usr/bin/node.
+# Do not upgrade npm to 12 as a required step.
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_NODE" = "1" ]; then
+  log "Checking Node.js (need 22.19+ or 24+ for DeepSeek Harness)"
+  node_bin=""
+  if [ -x /usr/bin/node ]; then
+    node_bin="/usr/bin/node"
+  elif require_command node; then
+    node_bin="$(command -v node)"
+  fi
+
+  if [ -n "$node_bin" ] && node_meets_dsh "$("$node_bin" -v 2>/dev/null || echo v0)"; then
+    log "Node already meets requirement: $("$node_bin" -v) ($node_bin)"
+  else
+    if [ -n "$node_bin" ]; then
+      warn "Found Node $("$node_bin" -v 2>/dev/null || echo unknown) at $node_bin — installing NodeSource Node 22"
+    else
+      log "Installing Node.js 22 from NodeSource"
+    fi
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+  fi
+
+  if [ -x /usr/bin/node ]; then
+    log "Node: $(/usr/bin/node -v)  npm: $(/usr/bin/npm -v)"
+    log "Prefer /usr/bin/node and /usr/bin/npm if a desktop terminal shows an older version"
+  else
+    warn "Node.js is not at /usr/bin/node after install"
+  fi
+else
+  log "Skipping Node.js installation (INSTALL_NODE=0)"
+fi
+
+# -----------------------------------------------------------------------------
+# DeepSeek Harness — official published CLI (@deepseek-ai/dsh)
+# Not a from-source monorepo build (too heavy on the Pi).
+# node-pty native build needs g++ from build-essential (installed above).
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_DSH" = "1" ]; then
+  log "Installing DeepSeek Harness (@deepseek-ai/dsh)"
+  if require_command dsh || [ -x /usr/bin/dsh ]; then
+    log "DeepSeek Harness already installed: $(command -v dsh 2>/dev/null || echo /usr/bin/dsh)"
+  elif [ -x /usr/bin/npm ]; then
+    sudo /usr/bin/npm i -g @deepseek-ai/dsh || warn "npm install of @deepseek-ai/dsh failed (need build-essential / g++)"
+    if [ -x /usr/bin/dsh ]; then
+      log "DeepSeek Harness installed at /usr/bin/dsh"
+    fi
+  else
+    warn "npm not found at /usr/bin/npm; install Node 22 and run: sudo /usr/bin/npm i -g @deepseek-ai/dsh"
+  fi
+else
+  log "Skipping DeepSeek Harness installation (INSTALL_DSH=0)"
 fi
 
 # -----------------------------------------------------------------------------
@@ -301,6 +390,24 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# Claude Code CLI — default engine for Composio tools (HF/Llama is text-only)
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then
+  log "Installing Claude Code CLI"
+  if require_command claude; then
+    log "Claude Code already installed"
+  elif [ -x /usr/bin/npm ]; then
+    sudo /usr/bin/npm i -g @anthropic-ai/claude-code || warn "npm install of @anthropic-ai/claude-code failed"
+  elif require_command npm; then
+    npm install -g @anthropic-ai/claude-code || warn "npm install of @anthropic-ai/claude-code failed"
+  else
+    warn "npm not found; install Node.js and run: sudo /usr/bin/npm i -g @anthropic-ai/claude-code"
+  fi
+else
+  log "Skipping Claude Code installation (INSTALL_CLAUDE_CODE=0)"
+fi
+
+# -----------------------------------------------------------------------------
 # ChatGPT / Codex Desktop (Linux ARM64/AMD64)
 # -----------------------------------------------------------------------------
 if [ "$INSTALL_CODEX_DESKTOP" = "1" ]; then
@@ -405,8 +512,6 @@ fi
 # -----------------------------------------------------------------------------
 # Clone workspaceAlbertaSetup repo
 # -----------------------------------------------------------------------------
-REPO_DIR="$HOME/workspaceAlbertaSetup"
-
 if [ "$CLONE_REPO" = "1" ]; then
   log "Checking workspaceAlbertaSetup repo"
   if [ -d "$REPO_DIR/.git" ]; then
@@ -553,6 +658,31 @@ else
 fi
 echo ""
 
+# Node.js
+if [ "$INSTALL_NODE" = "1" ]; then
+  if [ -x /usr/bin/node ]; then
+    echo "Node.js:        $(/usr/bin/node -v) (/usr/bin/node)"
+    echo "npm:            $(/usr/bin/npm -v) (/usr/bin/npm)"
+  elif require_command node; then
+    echo "Node.js:        $(node -v) ($(command -v node))"
+  else
+    echo "Node.js:        not installed"
+  fi
+else
+  echo "Node.js:        skipped"
+fi
+
+# DeepSeek Harness
+if [ "$INSTALL_DSH" = "1" ]; then
+  if [ -x /usr/bin/dsh ] || require_command dsh; then
+    echo "DeepSeek dsh:   $(command -v dsh 2>/dev/null || echo /usr/bin/dsh)"
+  else
+    echo "DeepSeek dsh:   not installed"
+  fi
+else
+  echo "DeepSeek dsh:   skipped"
+fi
+
 # Codex CLI
 if [ "$INSTALL_CODEX_CLI" = "1" ]; then
   if require_command codex; then
@@ -563,6 +693,17 @@ if [ "$INSTALL_CODEX_CLI" = "1" ]; then
   fi
 else
   echo "Codex CLI:      skipped"
+fi
+
+# Claude Code
+if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then
+  if require_command claude; then
+    echo "Claude Code:    $(claude --version 2>/dev/null || echo installed)"
+  else
+    echo "Claude Code:    installed (may need new shell for PATH)"
+  fi
+else
+  echo "Claude Code:    skipped"
 fi
 
 # ChatGPT Desktop
@@ -626,10 +767,11 @@ echo "1. Open a new terminal or run: source ~/.bashrc"
 echo ""
 
 if [ "$INSTALL_1PASSWORD" = "1" ]; then
-  echo "2. Sign into 1Password:"
+  echo "2. (Optional) Sign into 1Password:"
   echo "   - Launch '1Password' from the applications menu"
   echo "   - Sign in with your CEO / business account"
   echo "   - Enable browser integration if prompted"
+  echo "   - Skip with INSTALL_1PASSWORD=0 on the next unbox if unused"
   echo ""
 fi
 
@@ -644,6 +786,21 @@ if [ "$INSTALL_CODEX_CLI" = "1" ]; then
   echo "4. Authenticate Codex CLI:"
   echo "   codex"
   echo "   (Follow the browser sign-in flow)"
+  echo ""
+fi
+
+if [ "$INSTALL_CLAUDE_CODE" = "1" ]; then
+  echo "4b. Authenticate Claude Code (required for Composio tools):"
+  echo "   claude"
+  echo "   Hugging Face / Llama in WorkspaceAlberta is text-only."
+  echo ""
+fi
+
+if [ "$INSTALL_DSH" = "1" ]; then
+  echo "4c. Launch DeepSeek Harness (Ubuntu Terminal, not the Electron app):"
+  echo "   dsh web"
+  echo "   Then open http://127.0.0.1:3080 and paste a DeepSeek API key in Settings → Models."
+  echo "   This is separate from WorkspaceAlberta's in-app DeepSeek driver."
   echo ""
 fi
 
@@ -663,16 +820,20 @@ fi
 
 echo "7. Verify the setup:"
 echo "   tailscale status"
+echo "   /usr/bin/node -v"
+echo "   /usr/bin/dsh --help"
 echo "   1password --version"
 echo "   op --version"
 echo "   codex --version"
+echo "   claude --version"
 echo "   opencode --version"
 echo ""
 
 if [ "$INSTALL_WA_CHAT_APP" = "1" ]; then
   echo "8. Launch WorkspaceAlberta chat app:"
   echo "   - Find 'WorkspaceAlberta' in your applications menu, or"
-  echo "   - Build from source: cd $REPO_DIR && pnpm install && pnpm package:pi"
+  echo "   - From this repo: cd $REPO_DIR && git pull && pnpm install && pnpm start"
+  echo "   - Vite is http://127.0.0.1:5199; HF/Llama is text-only (Claude or Codex for Composio)"
   echo ""
 fi
 

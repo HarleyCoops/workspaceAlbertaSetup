@@ -76,11 +76,14 @@ chmod +x installer/install-ceo-pi.sh
 ```
 
 This installs:
-- **1Password** for secure credential management
 - **Tailscale** for remote support
-- **Codex CLI + ChatGPT Desktop** for AI-assisted work
-- **OpenCode** for MCP agent workflows
-- **WorkspaceAlberta chat app** (from releases, or build instructions)
+- **Node.js 22** (NodeSource) and **DeepSeek Harness** (`@deepseek-ai/dsh`)
+- **Codex CLI + Claude Code + ChatGPT Desktop** (Linux arm64 `.deb`) for AI-assisted work
+- **OpenCode / OpenCode2** for MCP agent workflows
+- **WorkspaceAlberta chat app** (from releases, or `pnpm start` from this repo)
+- **1Password** (optional) for credential management
+
+First-boot details that the 2026-08-14/15 unbox was missing (27W PSU, `/usr/bin/node`, `dsh web` on `127.0.0.1:3080`, dedicated Windows SSH key) live in [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md).
 
 ---
 
@@ -138,7 +141,7 @@ pnpm config set dangerouslyAllowAllBuilds true
 pnpm install
 ```
 
-Requirements: **Node 20+**, **pnpm**. Live TypeScript (`pnpm start` / `pnpm dev:server`) needs **Node 22+**. On Node 20 run `pnpm build:server` first — `pnpm start` will use `dist-server/`.
+Requirements: **Node 20+**, **pnpm**. Live TypeScript (`pnpm start` / `pnpm dev:server`) needs **Node 22+**. DeepSeek Harness (`dsh`) needs **Node 22.19+ or 24+**. On Ubuntu Desktop, terminals can pick up an older Node on `PATH` — use `/usr/bin/node` and `/usr/bin/npm` after NodeSource. Do not treat an npm 12 upgrade as a required step. On Node 20 run `pnpm build:server` first — `pnpm start` will use `dist-server/`.
 
 Individual processes (if you need them separately):
 
@@ -196,6 +199,10 @@ HF is optional text inference — it is not the boot default.
 
 Paid OpenAI-compatible fallback (`deepseek-v4-pro` / `deepseek-v4-flash`). Paste a key in
 App Settings, or set `DEEPSEEK_API_KEY`. Not the boot default.
+
+This in-app driver is **separate** from the official DeepSeek Harness CLI (`@deepseek-ai/dsh`,
+binary `/usr/bin/dsh`). Launch `dsh web` in the Ubuntu Terminal (binds `http://127.0.0.1:3080`)
+and paste a key in that UI's Settings → Models. See [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md).
 
 ### Optional: Connected Apps
 
