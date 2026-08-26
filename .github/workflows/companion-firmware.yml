@@ -37,3 +37,15 @@ jobs:
           . "$IDF_PATH/export.sh"
           idf.py set-target esp32s3
           idf.py build
+
+      - name: Upload companion firmware
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: companion-firmware
+          if-no-files-found: error
+          path: |
+            firmware/companion/build/flasher_args.json
+            firmware/companion/build/flash_args
+            firmware/companion/build/bootloader/bootloader.bin
+            firmware/companion/build/partition_table/partition-table.bin
+            firmware/companion/build/*.bin
