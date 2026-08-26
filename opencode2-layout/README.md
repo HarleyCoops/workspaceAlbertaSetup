@@ -107,8 +107,9 @@ Set in `~/.bashrc` or `~/.config/environment.d/opencode2.conf`:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DEEPSEEK_API_KEY` | Yes | Primary model provider |
-| `OPENAI_API_KEY` | Optional | Fallback provider |
-| `HF_TOKEN` | Optional | HuggingFace MCP access |
+| `ZAI_API_KEY` | Optional | Z.AI / GLM |
+| `HF_TOKEN` | Optional | Hugging Face models + MCP |
+| `COHERE_API_KEY` | Optional | Cohere Command A+ |
 | `GITHUB_TOKEN` | Optional | GitHub MCP access |
 
 **Never commit secrets.** Use environment variables or 1Password CLI.

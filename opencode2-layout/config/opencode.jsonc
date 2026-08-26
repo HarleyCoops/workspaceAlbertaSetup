@@ -7,6 +7,8 @@
   "model": "deepseek/deepseek-chat",
   "small_model": "deepseek/deepseek-chat",
   "default_agent": "procurement",
+  "enabled_providers": ["zai", "huggingface", "deepseek", "cohere"],
+  "disabled_providers": ["openai"],
 
   "autoupdate": "notify",
 
@@ -18,8 +20,18 @@
     "mdns": false
   },
 
-  // Provider configuration
+  // Open models only — GLM, Hugging Face, DeepSeek, Cohere. No OpenAI.
   "provider": {
+    "zai": {
+      "options": {
+        "apiKey": "{env:ZAI_API_KEY}"
+      }
+    },
+    "huggingface": {
+      "options": {
+        "apiKey": "{env:HF_TOKEN}"
+      }
+    },
     "deepseek": {
       "options": {
         "timeout": 600000,
@@ -27,10 +39,17 @@
         "apiKey": "{env:DEEPSEEK_API_KEY}"
       }
     },
-    "openai": {
+    "cohere": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Cohere",
       "options": {
-        "timeout": 600000,
-        "apiKey": "{env:OPENAI_API_KEY}"
+        "baseURL": "https://api.cohere.ai/compatibility/v1",
+        "apiKey": "{env:COHERE_API_KEY}"
+      },
+      "models": {
+        "command-a-plus-05-2026": {
+          "name": "Command A+"
+        }
       }
     }
   },

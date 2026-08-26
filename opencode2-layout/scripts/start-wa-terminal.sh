@@ -71,8 +71,8 @@ preflight() {
     fi
 
     # Check API keys (warn, don't fail)
-    [[ -z "${DEEPSEEK_API_KEY:-}" ]] && warn "DEEPSEEK_API_KEY not set — model calls may fail"
-    [[ -z "${OPENAI_API_KEY:-}" ]] && warn "OPENAI_API_KEY not set — fallback provider unavailable"
+    [[ -z "${DEEPSEEK_API_KEY:-}" ]] && warn "DEEPSEEK_API_KEY not set — DeepSeek model calls may fail"
+    [[ -z "${ZAI_API_KEY:-}" && -z "${HF_TOKEN:-}" && -z "${COHERE_API_KEY:-}" ]] && warn "No ZAI_API_KEY, HF_TOKEN, or COHERE_API_KEY — only DeepSeek is available"
 
     ok "Preflight complete"
 }
