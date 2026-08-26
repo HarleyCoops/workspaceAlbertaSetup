@@ -2,9 +2,12 @@ import { newEventId, newId } from "../contracts.js";
 import { appendNative } from "./native.js";
 const DRIVER_KIND = "grok";
 const DEFAULT_URL = "https://api.x.ai/v1";
+// Official model id: https://docs.x.ai/developers/models/grok-4.6
+export const GROK_DEFAULT_MODEL = "grok-4.6";
 const MODELS = {
-    default: "grok-4",
+    default: GROK_DEFAULT_MODEL,
     options: [
+        { id: "grok-4.6", label: "Grok 4.6" },
         { id: "grok-4", label: "Grok 4" },
         { id: "grok-4-fast", label: "Grok 4 Fast" },
         { id: "grok-3-mini", label: "Grok 3 Mini" },
@@ -186,7 +189,7 @@ export const GrokDriver = {
                 },
             },
             generateText: async (prompt) => {
-                const { text } = await complete([{ role: "user", content: prompt }], "grok-3-mini", { stream: false });
+                const { text } = await complete([{ role: "user", content: prompt }], GROK_DEFAULT_MODEL, { stream: false });
                 return text;
             },
             dispose: async () => {
