@@ -4,7 +4,7 @@ A complete beginner's guide to setting up a WorkspaceAlberta CEO productivity te
 
 Validated on a Raspberry Pi 5 (16GB), Ubuntu Desktop 24.04 LTS ARM64, official 27W USB-C wall supply — hostname example `wa-pi5-christian-01` (2026-08-14/15 unbox). Use this guide so the next Pi does not repeat that setup.
 
-By the end of this guide you will have a working AI-assisted productivity desk: Tailscale for remote support without router hassles, Node 22 and the official DeepSeek Harness CLI (`dsh`), ChatGPT Desktop, Codex CLI, Claude Code, OpenCode / OpenCode2, and the WorkspaceAlberta chat app from this repo. 1Password is optional. Litter (kittylitter.app) is phone-only operator support — customers never see or install it.
+By the end of this guide you will have a working AI-assisted productivity desk: Tailscale for remote support without router hassles, native OpenSSH on port 22 for the operator hop (Litter / Codex Remote), Node 22 and the official DeepSeek Harness CLI (`dsh`), ChatGPT Desktop, Codex CLI, Claude Code, OpenCode / OpenCode2, and the WorkspaceAlberta chat app from this repo. 1Password is optional. Litter (kittylitter.app) is phone-only operator support — customers never see or install it.
 
 ---
 
@@ -111,7 +111,7 @@ If prompted, enter the password you created during setup. You will not see chara
 
 ## 5. Run the CEO Software Installer
 
-The installer script sets up the CEO productivity tools: Tailscale, Node.js 22 (NodeSource), DeepSeek Harness (`@deepseek-ai/dsh`), Codex CLI, Claude Code, ChatGPT Desktop (Linux arm64 `.deb`), OpenCode / OpenCode2 layout, optional 1Password, and the WorkspaceAlberta chat app.
+The installer script sets up the CEO productivity tools: Tailscale, native OpenSSH (`openssh-server`, Ubuntu `ssh` unit, port 22), Node.js 22 (NodeSource), DeepSeek Harness (`@deepseek-ai/dsh`), Codex CLI, Claude Code, ChatGPT Desktop (Linux arm64 `.deb`), OpenCode / OpenCode2 layout, optional 1Password, and the WorkspaceAlberta chat app. OpenSSH is enabled on first boot for the provisioned account (`christian` / `support`); Tailscale is still required for remote support. Do not ask a customer to install or configure SSH.
 
 ### Basic install
 
@@ -353,6 +353,10 @@ Run these checks to confirm everything is working:
 # Check hostname
 hostname
 
+# Native OpenSSH (port 22; Ubuntu unit name is ssh)
+systemctl is-active ssh
+systemctl is-enabled ssh
+
 # Check Tailscale connection
 tailscale status
 tailscale ip -4
@@ -378,6 +382,7 @@ dpkg -l | grep workspacealberta
 **Expected results:**
 
 - `hostname` shows your device name (example: `wa-pi5-christian-01`).
+- `systemctl is-active ssh` is `active` and `systemctl is-enabled ssh` is `enabled` (native OpenSSH on port 22).
 - `tailscale status` shows "Connected" or lists your Tailscale 100.x IP.
 - `/usr/bin/node -v` is **v22.19+** or **v24+**.
 - `/usr/bin/dsh --help` prints usage. `dsh web` listens on `http://127.0.0.1:3080`.

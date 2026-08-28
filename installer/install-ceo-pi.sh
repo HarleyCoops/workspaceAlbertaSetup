@@ -10,7 +10,7 @@ set -euo pipefail
 #
 # This installer sets up the hyperproductive CEO stack:
 # - 1Password for secrets and password management (optional)
-# - Tailscale for remote support
+# - Tailscale for remote support plus native OpenSSH on :22 for Litter / Codex Remote
 # - Node.js 22 (NodeSource) + build-essential for native npm modules
 # - DeepSeek Harness CLI (@deepseek-ai/dsh) — published package, not a
 #   from-source monorepo build
@@ -122,10 +122,14 @@ sudo apt-get install -y \
   jq \
   unattended-upgrades \
   build-essential \
-  python3
+  python3 \
+  openssh-server
 
 log "Enabling unattended-upgrades"
 sudo systemctl enable --now unattended-upgrades || warn "unattended-upgrades service may already be enabled"
+
+log "Enabling native OpenSSH (ssh on :22)"
+sudo systemctl enable --now ssh || warn "ssh service may already be enabled"
 
 # -----------------------------------------------------------------------------
 # Hostname (optional)

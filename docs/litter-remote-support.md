@@ -1,6 +1,6 @@
 # Litter Mobile Support Client
 
-A quick reference for Christian's phone-based remote support workflow using [KittyLitter/Litter](https://kittylitter.app/).
+A quick reference for Christian's phone-based remote support workflow using [KittyLitter/Litter](https://kittylitter.app/). Native OpenSSH on port 22 is the operator hop for Litter, Codex Remote, and Grok Bot on boards deployed in businesses. Tailscale is still required.
 
 ---
 
@@ -10,10 +10,10 @@ A quick reference for Christian's phone-based remote support workflow using [Kit
 |----|--------|
 | A native iOS/Android client for Codex and OpenCode | A customer-facing app |
 | Christian's phone support tool | Part of the desk SKU |
-| An SSH client over Tailscale | A replacement for Tailscale |
+| An SSH client to native OpenSSH on :22 over Tailscale | A replacement for Tailscale |
 | Optional on-site tool via Alleycat QR | A replacement for Composio |
 
-**Bottom line:** Litter is an operator convenience—connect to a customer Pi from your phone, run Codex or OpenCode, fix the problem, disconnect. Customers never see or install it.
+**Bottom line:** Litter is an operator convenience—connect to a customer Pi from your phone, run Codex or OpenCode, fix the problem, disconnect. Customers never see or install it. Do not ask a customer to set up SSH.
 
 ---
 
@@ -21,7 +21,8 @@ A quick reference for Christian's phone-based remote support workflow using [Kit
 
 | Component | Where |
 |-----------|-------|
-| **Tailscale on Pi** | Installed by `install-ceo-pi.sh`; device joins with `tag:wa-terminal` / `tag:wa-pi5` |
+| **Native OpenSSH on Pi** | Installed and enabled by `install-ceo-pi.sh` (`openssh-server`, Ubuntu unit `ssh`, port 22). Login is the provisioned account (`christian` / `support`). |
+| **Tailscale on Pi** | Still required. Installed by `install-ceo-pi.sh`; device joins with `tag:wa-terminal` / `tag:wa-pi5` |
 | **Tailscale on phone** | [iOS App Store](https://apps.apple.com/app/tailscale/id1470499037) / Google Play; same tailnet as the Pi |
 | **Codex and/or OpenCode on Pi** | Installed by the CEO installer |
 | **Litter on iPhone** | [KittyLitter on App Store](https://apps.apple.com/ca/app/kittylitter/id6759521788) |
@@ -38,18 +39,19 @@ export TS_AUTHKEY="tskey-auth-..."
 ./installer/install-ceo-pi.sh
 ```
 
-The installer sets the Pi's Tailscale hostname to `$HOSTNAME_FQ` and joins the tailnet. Write the hostname on the shipping label or in your CRM.
+The installer sets the Pi's Tailscale hostname to `$HOSTNAME_FQ`, joins the tailnet, and enables native OpenSSH on port 22. Write the hostname on the shipping label or in your CRM. Boards already in the field may still have OpenSSH installed by hand; this is the default for the next desks.
 
 ---
 
 ## Support-Time: Phone → Pi
 
-1. **Tailscale up on phone** — Open Tailscale, confirm you're connected to the same tailnet.
+1. **Tailscale up on phone** — Open Tailscale, confirm you're connected to the same tailnet. Tailscale is still required; native OpenSSH on :22 is the hop, not a public-internet listener for customers.
 2. **Open Litter** — Tap **SSH** or **Connections**.
 3. **Add connection** (first time):
-   - Host: `user@wa-customer-acme` (MagicDNS hostname)
-   - Auth: Tailscale SSH handles it; no password needed if ACLs allow your user
-4. **Connect** — Litter opens a terminal session over the Tailscale tunnel.
+   - Host: `christian@wa-customer-acme` or `support@wa-customer-acme` (provisioned account + MagicDNS hostname)
+   - Port: `22`
+   - Auth: key-based (`authorized_keys`) over the Tailscale path. Default Ubuntu OpenSSH config; do not enable password login for support.
+4. **Connect** — Litter opens a terminal session to native OpenSSH on the Pi, tunneled through Tailscale.
 5. **Run Codex or OpenCode**:
    ```bash
    codex
@@ -60,10 +62,11 @@ The installer sets the Pi's Tailscale hostname to `$HOSTNAME_FQ` and joins the t
 
 ### If MagicDNS Is Unavailable
 
-Use the Tailscale IP instead:
+Use the Tailscale IP instead (still port 22, still the provisioned account):
 
 ```
-user@100.x.y.z
+christian@100.x.y.z
+support@100.x.y.z
 ```
 
 Find IPs in the Tailscale admin console or run `tailscale status` on a connected device.

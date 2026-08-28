@@ -6,7 +6,7 @@ This runbook covers first-boot setup for WorkspaceAlberta CEO productivity termi
 
 The CEO stack focuses on hyperproductive AI-assisted workflows:
 
-- **Tailscale** for secure remote support
+- **Tailscale** for secure remote support, plus native **OpenSSH** on port 22 (Litter / Codex Remote / Grok Bot operator hop)
 - **Node.js 22** (NodeSource) plus `build-essential` / `python3` for native npm modules
 - **DeepSeek Harness** (`@deepseek-ai/dsh`) — official published CLI, not a from-source monorepo build
 - **Codex CLI** and **Claude Code** for AI pair programming and Composio tools
@@ -83,12 +83,14 @@ All configuration is through environment variables. All are optional with sensib
 
 ```text
 curl ca-certificates tmux vim git htop jq unattended-upgrades
-build-essential python3
+build-essential python3 openssh-server
 ```
 
 `build-essential` (provides `g++`) and `python3` must be present before any native npm build. DeepSeek Harness's `node-pty` addon fails without them.
 
 Unattended-upgrades is enabled to keep security patches current.
+
+Native OpenSSH (`openssh-server`) is installed and the Ubuntu `ssh` unit is enabled so port 22 is listening on every provisioned desk. Login is the provisioned account (`christian` / `support`). Default Ubuntu sshd config is left as-is (key-based `authorized_keys`; the installer does not turn on `PasswordAuthentication`). Tailscale is still required for the support path — OpenSSH is the hop, not a public-internet exposure.
 
 ### Node.js 22 (NodeSource)
 
@@ -339,6 +341,10 @@ Verify the installation:
 hostname
 hostnamectl
 
+# Native OpenSSH (port 22; Ubuntu unit name is ssh)
+systemctl is-active ssh
+systemctl is-enabled ssh
+
 # Tailscale
 tailscale status
 tailscale ip -4
@@ -372,14 +378,16 @@ dpkg -l | grep workspacealberta
 
 ## Remote support
 
-Once Tailscale is connected, support staff can reach the device:
+Once Tailscale is connected, support staff can reach the device over the tailnet. Native OpenSSH listens on port 22 for Litter, Codex Remote, and Grok Bot. Login as the provisioned account (`christian` or `support`):
 
 ```bash
+ssh support@wa-pi5-acme-edmonton-01
+# or Tailscale SSH:
 tailscale ssh support@wa-pi5-acme-edmonton-01
 tmux attach -t support || tmux new -s support
 ```
 
-See `tailscale-pi-remote-support.md` for the full remote support runbook.
+See `tailscale-pi-remote-support.md` for the full remote support runbook and `litter-remote-support.md` for the phone hop.
 
 ---
 
