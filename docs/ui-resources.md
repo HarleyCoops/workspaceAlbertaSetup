@@ -1,7 +1,12 @@
 # UI Resources
 
-Visual and interaction reference for the WorkspaceAlberta chat harness (React + Electron).
-These catalogs are **references only** — do not vendor them, add them as a dependency, or restyle the app to match.
+Visual and interaction reference for the **leftover** WorkspaceAlberta chat harness (React + Electron
+in `src/`). That leftover app is not the subscriber SKU.
+
+The subscriber terminal is [`terminal/`](../terminal/). Do not restyle the leftover Electron chat
+and call it the product.
+
+These catalogs are **references only** — do not vendor them, add them as a dependency, or restyle the leftover app to match.
 
 ---
 
@@ -13,7 +18,7 @@ Crafted primitives for AI-native interfaces.
 
 ### When to use
 
-Changing chat or harness UI: loading state, thinking traces, streaming text, approval cards, tool chips, task rows, chat, prompt bar, recommendation cards, context cards, sidebar nav, insight cards, code block, selection actions.
+Changing leftover chat or leftover harness UI only: loading state, thinking traces, streaming text, approval cards, tool chips, task rows, chat, prompt bar, recommendation cards, context cards, sidebar nav, insight cards, code block, selection actions. For the subscriber terminal, edit `terminal/`.
 
 ### What not to do
 
@@ -22,7 +27,7 @@ Changing chat or harness UI: loading state, thinking traces, streaming text, app
 | Rewrite or restyle the app to match the catalog | The existing WorkspaceAlberta chat shell |
 | Add a `beautifului` dependency or vendor the library | Beautiful UI as a visual/interaction reference |
 | Replace Composio or invent a second tool mesh | Composio Connect as MCP into Claude Code / Codex CLI |
-| Invent a second chat shell | One harness UI, shared with the sister surface |
+| Restyle the leftover Electron chat and call it the SKU | Subscriber shell lives in `terminal/` |
 
 ### Sister harness
 
