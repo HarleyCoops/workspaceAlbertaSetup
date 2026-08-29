@@ -40,6 +40,7 @@ INSTALL_WA_CHAT_APP="${INSTALL_WA_CHAT_APP:-1}"
 INSTALL_HERMES_APPLIANCE="${INSTALL_HERMES_APPLIANCE:-0}"
 CONFIGURE_WA_KEY="${CONFIGURE_WA_KEY:-1}"
 INSTALL_OPENCODE2_LAYOUT="${INSTALL_OPENCODE2_LAYOUT:-1}"
+INSTALL_WA_SKILLS="${INSTALL_WA_SKILLS:-1}"
 CLONE_REPO="${CLONE_REPO:-1}"
 SKIP_APT_UPGRADE="${SKIP_APT_UPGRADE:-0}"
 
@@ -525,6 +526,29 @@ if [ "$CLONE_REPO" = "1" ]; then
   fi
 else
   log "Skipping repo clone (CLONE_REPO=0)"
+fi
+
+# -----------------------------------------------------------------------------
+# WorkspaceAlberta skill pack → ~/.dsh/skills/
+# The harness skill loader scans ONE level: ~/.dsh/skills/<name>/SKILL.md.
+# Pack skills ship flat and update in place; locally learned skills are never
+# deleted, so each terminal's own evolve output survives a re-run.
+# -----------------------------------------------------------------------------
+if [ "$INSTALL_WA_SKILLS" = "1" ]; then
+  if [ -d "$REPO_DIR/skills" ]; then
+    log "Installing WorkspaceAlberta skill pack"
+    mkdir -p "$HOME/.dsh/skills"
+    for skill_dir in "$REPO_DIR/skills"/*/; do
+      skill_name="$(basename "$skill_dir")"
+      rm -rf "$HOME/.dsh/skills/$skill_name"
+      cp -r "$skill_dir" "$HOME/.dsh/skills/$skill_name"
+      log "Skill installed: $skill_name"
+    done
+  else
+    warn "Skill pack not found at $REPO_DIR/skills; skipping"
+  fi
+else
+  log "Skipping skill pack installation (INSTALL_WA_SKILLS=0)"
 fi
 
 # -----------------------------------------------------------------------------

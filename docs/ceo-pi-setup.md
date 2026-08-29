@@ -290,6 +290,27 @@ debugging on a new Pi):
 - The web profile lives at `~/.dsh/profiles/web/` (`cordis.patch.yml` there holds the Linear and
   Composio MCP clients).
 
+### WorkspaceAlberta skill pack
+
+The industry skill pack — git-versioned in this repo under [`skills/`](../skills/) — installs to
+`~/.dsh/skills/`. It carries the terminal's working knowledge: `autoresearcher` (mines session
+traces into the evolve loop), `browser-use-web-automation`, `j-space` (the reasoning
+methodology), and the learned skills distilled by the evolve loop from real Warre & Vavasour
+sessions (`linear-board-ops`, `dated-finance-research`, `primary-source-investigation`,
+`autonomous-overnight-build`).
+
+Two rules that matter:
+
+- The harness skill loader scans **one level only**: `~/.dsh/skills/<name>/SKILL.md`. Never
+  nest skill directories (a `learned/` subfolder silently loads nothing) — that cost this fleet
+  four invisible skills once.
+- The installer updates pack-managed skills in place and never deletes anything else, so each
+  terminal's own evolve output survives re-runs. Promote a terminal's learned skill into the
+  pack by copying it into `skills/` here and committing — that is the industry-pack pipeline:
+  learn locally, curate in git, ship to the fleet.
+
+Skip with `INSTALL_WA_SKILLS=0`.
+
 ### Hermes appliance (optional)
 
 Set `INSTALL_HERMES_APPLIANCE=1` to also clone and run the Hermes installer from the separate `HarleyCoops/WorkspaceAlberta` repository. This adds the branded dashboard, procurement MCP agents, local API gateway, and kiosk autostart.
@@ -435,6 +456,7 @@ dpkg -l | grep workspacealberta
 # WorkspaceAlberta agent harness (dsh, if installed)
 grep -q '^COHERE_API_KEY:' ~/.dsh/.credentials.yaml && echo "cohere key present"
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3081/   # expect 200 when running
+ls ~/.dsh/skills/linear-board-ops/SKILL.md >/dev/null && echo "skill pack installed"
 ```
 
 ---
