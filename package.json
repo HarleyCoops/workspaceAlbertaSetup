@@ -1,55 +1,10 @@
 {
-  "name": "workspacealbertasetup",
+  "name": "workspacealberta-setup",
   "private": true,
   "version": "0.2.0",
-  "type": "module",
-  "main": "electron/main.mjs",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/HarleyCoops/workspaceAlbertaSetup.git"
-  },
-  "bugs": {
-    "url": "https://github.com/HarleyCoops/workspaceAlbertaSetup/issues"
-  },
-  "homepage": "https://github.com/HarleyCoops/workspaceAlbertaSetup#readme",
+  "description": "Setup home for WorkspaceAlberta terminals: Pi installer, industry skill pack, and provisioning docs. The product is the harness (HarleyCoops/workspacealberta-harness).",
   "scripts": {
-    "start": "node scripts/start-desktop.mjs",
-    "verify": "node --experimental-strip-types scripts/verify.mjs",
-    "dev": "vite",
-    "dev:server": "node --experimental-strip-types server/index.ts",
-    "dev:desktop": "electron .",
-    "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
-    "typecheck": "tsc -b && tsc -p tsconfig.server.json",
-    "preview": "vite preview",
-    "build:server": "tsc -p tsconfig.server.build.json",
-    "build:speech": "swiftc -O electron/resources/speech-helper.swift -o electron/resources/speech-helper",
-    "build:perm": "swiftc -O electron/resources/perm-helper.swift -o electron/resources/perm-helper",
-    "package": "pnpm build && pnpm build:server && electron-builder --publish never",
-    "package:mac": "pnpm build && pnpm build:server && pnpm build:speech && pnpm build:perm && electron-builder --mac --publish never",
-    "package:linux": "pnpm build && pnpm build:server && electron-builder --linux --publish never",
-    "package:linux:arm64": "pnpm build && pnpm build:server && electron-builder --linux --arm64 --publish never",
-    "package:pi": "pnpm build && pnpm build:server && electron-builder --linux deb --arm64 --publish never"
+    "verify": "node scripts/verify.mjs"
   },
-  "dependencies": {
-    "@trycua/cua-driver": "^0.19.3",
-    "clsx": "^2.1.1",
-    "e2b": "^2.28.0",
-    "lucide-react": "^0.539.0",
-    "posthog-js": "^1.415.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "tailwind-merge": "^3.3.1"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.1.11",
-    "@types/node": "^26.2.0",
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7",
-    "@vitejs/plugin-react": "^4.7.0",
-    "electron": "^43.4.0",
-    "electron-builder": "^26.15.3",
-    "tailwindcss": "^4.1.11",
-    "typescript": "^5.8.3",
-    "vite": "^7.1.0"
-  }
+  "license": "MIT"
 }

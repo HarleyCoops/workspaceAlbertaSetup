@@ -4,7 +4,7 @@ A complete beginner's guide to setting up a WorkspaceAlberta CEO productivity te
 
 Validated on a Raspberry Pi 5 (16GB), Ubuntu Desktop 24.04 LTS ARM64, official 27W USB-C wall supply — hostname example `wa-pi5-christian-01` (2026-08-14/15 unbox). Use this guide so the next Pi does not repeat that setup.
 
-By the end of this guide you will have a working AI-assisted productivity desk: Tailscale for remote support without router hassles, Node 22 and the official DeepSeek Harness CLI (`dsh`), ChatGPT Desktop, Codex CLI, Claude Code, OpenCode / OpenCode2, and the WorkspaceAlberta chat app from this repo. 1Password is optional. Litter (kittylitter.app) is phone-only operator support — customers never see or install it.
+By the end of this guide you will have a working AI-assisted productivity desk: Tailscale for remote support without router hassles, Node 22 and the official DeepSeek Harness CLI (`dsh`), ChatGPT Desktop, Codex CLI, Claude Code, OpenCode / OpenCode2. 1Password is optional. Litter (kittylitter.app) is phone-only operator support — customers never see or install it.
 
 ---
 
@@ -111,7 +111,7 @@ If prompted, enter the password you created during setup. You will not see chara
 
 ## 5. Run the CEO Software Installer
 
-The installer script sets up the CEO productivity tools: Tailscale, Node.js 22 (NodeSource), DeepSeek Harness (`@deepseek-ai/dsh`), Codex CLI, Claude Code, ChatGPT Desktop (Linux arm64 `.deb`), OpenCode / OpenCode2 layout, optional 1Password, and the WorkspaceAlberta chat app.
+The installer script sets up the CEO productivity tools: Tailscale, Node.js 22 (NodeSource), DeepSeek Harness (`@deepseek-ai/dsh`), Codex CLI, Claude Code, ChatGPT Desktop (Linux arm64 `.deb`), OpenCode / OpenCode2 layout, and optional 1Password.
 
 ### Basic install
 
@@ -129,7 +129,7 @@ chmod +x installer/install-ceo-pi.sh
 3. **chmod +x** makes the installer script executable.
 4. **./installer/install-ceo-pi.sh** runs the installer.
 
-The installer will prompt for your `sudo` password. Let it run to completion — it installs packages, configures services, downloads the AI desktop apps, and attempts to install the WorkspaceAlberta chat app from releases.
+The installer will prompt for your `sudo` password. Let it run to completion — it installs packages, configures services, and downloads the AI desktop apps.
 
 ### With Tailscale auto-join (optional)
 
@@ -202,17 +202,12 @@ opencode
 
 Follow the authentication prompts for your preferred AI provider.
 
-### 5. Launch WorkspaceAlberta Chat App
+### 5. Launch the WorkspaceAlberta harness
 
-If a `.deb` was installed, open **WorkspaceAlberta** from the applications menu.
-
-There is often no release yet. From this repo, the path that actually works on the desk is `git pull`, `pnpm install`, and `pnpm start` (the `scripts/start-desktop.mjs` helper). Vite serves the UI at `http://127.0.0.1:5199`. See [WorkspaceAlberta from this repo](#workspacealberta-from-this-repo) below.
-
-- Open **App Settings** (gear icon in sidebar).
-- Paste a [Hugging Face token](https://huggingface.co/settings/tokens) only if you want optional text inference (GLM, Llama, Qwen). HF/Llama cannot drive Composio tools.
-- For Gmail / Drive / Slack / GitHub, install and sign in to **Claude Code or Codex**, then paste a Composio Connect key (`ck_…`) in App Settings.
-
-Packaging a `.deb` is optional (`pnpm package:pi`) and is slower than `pnpm start` for first boot.
+The product UI is the WorkspaceAlberta harness (the branded dsh fork), served on
+`http://127.0.0.1:3081` from `~/Projects/WorkspaceAlberta-Harness`. Setup, the Cohere key, and
+the launch command live in [docs/ceo-pi-setup.md](ceo-pi-setup.md) under
+"WorkspaceAlberta agent harness (dsh)".
 
 ### 6. Approve Tailscale (if no auth key was provided)
 
@@ -228,7 +223,7 @@ From a Windows desktop on the same tailnet, `tailscale ssh christian@wa-pi5-chri
 
 ---
 
-## 7. Node.js, DeepSeek Harness, and the chat app from source
+## 7. Node.js and DeepSeek Harness from source
 
 The CEO installer now installs Node 22 (NodeSource), `build-essential`, `python3`, and `@deepseek-ai/dsh`. If you are on a Pi that was unboxed before that change, run the steps in this section by hand.
 
@@ -272,26 +267,7 @@ dsh web
 
 `dsh web` binds **`http://127.0.0.1:3080` only** (not the LAN). Open that URL in a browser on the Pi, then paste a DeepSeek API key in **Settings → Models**.
 
-This key and UI are **separate** from WorkspaceAlberta's in-app DeepSeek driver (App Settings → DeepSeek API key / `DEEPSEEK_API_KEY`). One does not configure the other.
-
-### WorkspaceAlberta from this repo
-
-```bash
-cd ~/workspaceAlbertaSetup
-git pull
-sudo /usr/bin/npm i -g pnpm
-pnpm install
-pnpm start
-```
-
-`pnpm start` runs `scripts/start-desktop.mjs`: harness server (`127.0.0.1:8799`), Vite (`127.0.0.1:5199`), and Electron. A black Electron window usually means Vite is not up yet.
-
-If **pnpm 11** blocks `electron` / `esbuild` postinstall scripts:
-
-```bash
-pnpm config set dangerouslyAllowAllBuilds true
-pnpm install
-```
+The WorkspaceAlberta product harness (our fork, Cohere default, port 3081) is separate again — see [docs/ceo-pi-setup.md](ceo-pi-setup.md).
 
 Live TypeScript needs Node 22+. On Node 20, run `pnpm build:server` first.
 
@@ -384,7 +360,7 @@ dpkg -l | grep workspacealberta
 - `1password --version` and `op --version` print version numbers if you installed 1Password.
 - `codex --version`, `claude --version`, and `opencode --version` print version numbers.
 - `dpkg -l | grep chatgpt` shows a line with "chatgpt" (the Linux arm64 desktop app).
-- WorkspaceAlberta either appears in `dpkg -l` or launches via `pnpm start` (Vite on `127.0.0.1:5199`).
+- The WorkspaceAlberta harness serves `http://127.0.0.1:3081` when launched from its checkout (see [ceo-pi-setup.md](ceo-pi-setup.md)).
 
 If all checks pass, your CEO productivity terminal is ready to use.
 
@@ -467,18 +443,12 @@ The desktop app is validated for Ubuntu 24.04/26.04 and Fedora. On Raspberry Pi 
   sudo apt update && sudo apt full-upgrade -y
   ```
 
-### WorkspaceAlberta chat app not found
+### WorkspaceAlberta harness not running
 
-If the installer said "No release found", run the app from this repo instead of waiting on a `.deb`:
-
-```bash
-cd ~/workspaceAlbertaSetup
-git pull
-pnpm install
-pnpm start
-```
-
-`pnpm start` opens Electron after Vite is up on `127.0.0.1:5199`. Packaging (`pnpm package:pi`) is optional.
+The product UI is the harness fork, not an app in this repo. Clone and launch it per
+[docs/ceo-pi-setup.md](ceo-pi-setup.md) under "WorkspaceAlberta agent harness (dsh)", then check
+`http://127.0.0.1:3081`. If sessions mount but messages fail, the Cohere key is missing from the
+credential layering.
 
 ### `dsh` missing, or `node-pty` / `g++` errors during install
 

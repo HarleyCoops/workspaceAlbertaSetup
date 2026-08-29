@@ -12,7 +12,6 @@ The CEO stack focuses on hyperproductive AI-assisted workflows:
 - **Codex CLI** and **Claude Code** for AI pair programming and Composio tools
 - **ChatGPT / Codex Desktop** (Linux arm64 `.deb`) for conversational AI on the desktop
 - **OpenCode / OpenCode2** for MCP-first agent workflows
-- **WorkspaceAlberta chat app** — the Telegram-style AI bot interface from this repo (`pnpm start` if no release `.deb`)
 - **1Password** (optional) for credential and secrets management
 
 This installer is separate from the Hermes appliance stack. Use the Hermes installer (in the separate `HarleyCoops/WorkspaceAlberta` repo) if you need the branded dashboard, procurement MCP agents, and local gateway services.
@@ -69,7 +68,6 @@ All configuration is through environment variables. All are optional with sensib
 | `INSTALL_TAILSCALE` | `1` | Install and configure Tailscale |
 | `INSTALL_NODE` | `1` | Install Node.js 22 from NodeSource (`/usr/bin/node`) |
 | `INSTALL_DSH` | `1` | Install DeepSeek Harness (`@deepseek-ai/dsh`) |
-| `INSTALL_WA_CHAT_APP` | `1` | Install WorkspaceAlberta chat app from releases |
 | `INSTALL_HERMES_APPLIANCE` | `0` | Also run the Hermes appliance installer (from separate repo) |
 | `INSTALL_OPENCODE2_LAYOUT` | `1` | Install OpenCode2 always-on dual-display layout |
 | `CLONE_REPO` | `1` | Pull or clone this repo (defaults to the tree that contains the installer) |
@@ -198,26 +196,6 @@ Clones to `~/workspaceAlbertaSetup` if not already present. If the repo exists, 
 
 Skip with `CLONE_REPO=0`.
 
-### WorkspaceAlberta chat app
-
-Attempts to download and install the Linux `.deb` from this repo's GitHub releases:
-
-- ARM64: `workspacealberta_arm64.deb`
-- AMD64: `workspacealberta_amd64.deb`
-
-If no release exists yet, the installer gracefully skips this step. Run the app from this repo:
-
-```bash
-cd ~/workspaceAlbertaSetup
-git pull
-pnpm install
-pnpm start
-```
-
-`pnpm start` launches `scripts/start-desktop.mjs` (harness on `127.0.0.1:8799`, Vite on `127.0.0.1:5199`, then Electron). `pnpm package:pi` is optional if you want a `.deb`.
-
-Skip with `INSTALL_WA_CHAT_APP=0`.
-
 ### OpenCode2 always-on layout
 
 Installs a dual-monitor Bloomberg-style layout for always-on OpenCode2 operation:
@@ -317,7 +295,7 @@ Set `INSTALL_HERMES_APPLIANCE=1` to also clone and run the Hermes installer from
 
 By default this is off (`0`) because:
 - The CEO stack focuses on direct AI tool access
-- The WorkspaceAlberta chat app provides the primary UI from this repo
+- The WorkspaceAlberta harness provides the primary UI from its own fork
 - Procurement MCP tools can be installed separately if needed
 
 ---
@@ -381,24 +359,7 @@ systemctl --user start opencode2-wa
 systemctl --user start wa-terminal-tmux
 ```
 
-### 5. Configure WorkspaceAlberta Chat App
-
-If a `.deb` was installed, launch WorkspaceAlberta from the applications menu. Otherwise from this repo:
-
-```bash
-cd ~/workspaceAlbertaSetup
-git pull
-pnpm install
-pnpm start
-```
-
-Vite listens on `127.0.0.1:5199`. Hugging Face / Llama is optional **text-only** inference. Claude or Codex is required for Composio tools.
-
-- Open **App Settings** (gear icon in sidebar)
-- Paste your [Hugging Face token](https://huggingface.co/settings/tokens) only if you want HF text inference
-- Paste a Composio Connect key (`ck_…`) after Claude or Codex is signed in
-
-### 5a. Add the Cohere key for the agent harness
+### 5. Add the Cohere key for the agent harness
 
 Add your Cohere API key (`COHERE_API_KEY`) to the harness credential locations — see
 [WorkspaceAlberta agent harness (dsh)](#workspacealberta-agent-harness-dsh) above for the
@@ -449,9 +410,6 @@ dpkg -l | grep chatgpt
 ls ~/.config/opencode/opencode.json
 tmux list-sessions | grep wa-terminal
 systemctl --user is-enabled opencode2-wa wa-terminal-tmux
-
-# WorkspaceAlberta chat app
-dpkg -l | grep workspacealberta
 
 # WorkspaceAlberta agent harness (dsh, if installed)
 grep -q '^COHERE_API_KEY:' ~/.dsh/.credentials.yaml && echo "cohere key present"

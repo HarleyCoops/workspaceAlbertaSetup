@@ -17,7 +17,6 @@ set -euo pipefail
 # - Codex CLI + ChatGPT desktop for AI-assisted work
 # - Claude Code CLI (required, with Codex, for Composio tools)
 # - OpenCode for MCP-first agent workflows
-# - WorkspaceAlberta Linux chat app (from this repo's releases)
 #
 # Optionally references HarleyCoops/WorkspaceAlberta for procurement MCP agents.
 
@@ -36,7 +35,6 @@ INSTALL_CLAUDE_CODE="${INSTALL_CLAUDE_CODE:-1}"
 INSTALL_TAILSCALE="${INSTALL_TAILSCALE:-1}"
 INSTALL_NODE="${INSTALL_NODE:-1}"
 INSTALL_DSH="${INSTALL_DSH:-1}"
-INSTALL_WA_CHAT_APP="${INSTALL_WA_CHAT_APP:-1}"
 INSTALL_HERMES_APPLIANCE="${INSTALL_HERMES_APPLIANCE:-0}"
 CONFIGURE_WA_KEY="${CONFIGURE_WA_KEY:-1}"
 INSTALL_OPENCODE2_LAYOUT="${INSTALL_OPENCODE2_LAYOUT:-1}"
@@ -552,59 +550,6 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# WorkspaceAlberta Chat App (Linux .deb from this repo's releases)
-# -----------------------------------------------------------------------------
-if [ "$INSTALL_WA_CHAT_APP" = "1" ]; then
-  log "Checking for WorkspaceAlberta chat app"
-
-  arch="$(detect_arch)"
-  wa_app_installed=false
-
-  # Check if already installed
-  if dpkg -l 2>/dev/null | grep -qi "workspacealberta"; then
-    log "WorkspaceAlberta chat app already installed"
-    wa_app_installed=true
-  fi
-
-  if [ "$wa_app_installed" = "false" ]; then
-    case "$arch" in
-      arm64)
-        wa_deb_url="https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_arm64.deb"
-        wa_deb_file="/tmp/workspacealberta_arm64.deb"
-        ;;
-      amd64)
-        wa_deb_url="https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_amd64.deb"
-        wa_deb_file="/tmp/workspacealberta_amd64.deb"
-        ;;
-      *)
-        warn "Unknown architecture '$arch'; skipping WorkspaceAlberta chat app install"
-        wa_deb_url=""
-        ;;
-    esac
-
-    if [ -n "$wa_deb_url" ]; then
-      log "Attempting to download WorkspaceAlberta chat app for $arch"
-      if curl -fsSL -o "$wa_deb_file" "$wa_deb_url" 2>/dev/null; then
-        log "Installing WorkspaceAlberta chat app"
-        sudo apt-get install -y "$wa_deb_file" || {
-          warn "apt-get install failed; trying dpkg + apt-get -f install"
-          sudo dpkg -i "$wa_deb_file" || true
-          sudo apt-get install -f -y
-        }
-        rm -f "$wa_deb_file"
-        log "WorkspaceAlberta chat app installed"
-      else
-        warn "No release found for WorkspaceAlberta chat app (this is OK for fresh repos)"
-        warn "To build locally: cd $REPO_DIR && pnpm install && pnpm package:pi"
-        log "The chat app can be installed later from releases or built from source"
-      fi
-    fi
-  fi
-else
-  log "Skipping WorkspaceAlberta chat app installation (INSTALL_WA_CHAT_APP=0)"
-fi
-
-# -----------------------------------------------------------------------------
 # Hermes appliance layer (optional, off by default)
 # Points to the separate HarleyCoops/WorkspaceAlberta repo for procurement MCP
 # -----------------------------------------------------------------------------
@@ -795,17 +740,6 @@ else
   echo "OpenCode2 Layout: skipped"
 fi
 
-# WorkspaceAlberta Chat App
-if [ "$INSTALL_WA_CHAT_APP" = "1" ]; then
-  if dpkg -l 2>/dev/null | grep -qi "workspacealberta"; then
-    echo "WA Chat App:    installed"
-  else
-    echo "WA Chat App:    not installed (build with pnpm package:pi)"
-  fi
-else
-  echo "WA Chat App:    skipped"
-fi
-
 # Repo
 if [ -d "$REPO_DIR/.git" ]; then
   echo "Repo:           $REPO_DIR"
@@ -883,15 +817,6 @@ echo "   codex --version"
 echo "   claude --version"
 echo "   opencode --version"
 echo ""
-
-if [ "$INSTALL_WA_CHAT_APP" = "1" ]; then
-  echo "8. Launch WorkspaceAlberta chat app:"
-  echo "   - Find 'WorkspaceAlberta' in your applications menu, or"
-  echo "   - From this repo: cd $REPO_DIR && git pull && pnpm install && pnpm start"
-  echo "   - Vite is http://127.0.0.1:5199; HF/Llama is text-only (Claude or Codex for Composio)"
-  echo ""
-fi
-
 echo "9. (Optional) Install procurement MCP tools:"
 echo "   git clone https://github.com/HarleyCoops/WorkspaceAlberta.git ~/WorkspaceAlberta"
 echo "   cd ~/WorkspaceAlberta"

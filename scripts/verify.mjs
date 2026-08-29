@@ -1,144 +1,39 @@
 #!/usr/bin/env node
-// Smoke checks for start-helper env flags, the OpenAI/Composio tool loop,
-// and the Grok model catalog default.
+// Setup-integrity checks for the workspaceAlbertaSetup repo. The chat app is
+// gone; this verifies what remains: the installer, the industry skill pack,
+// and the docs that reference them.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { createServer } from "node:http";
-import { electronArgs, electronEnv, serverLaunch, waitForHttp } from "./start-desktop.mjs";
-import { accumulateToolCallDelta, normalizeToolCalls, runOpenAITurn } from "../server/drivers/openaiCompat.ts";
-import { COMPOSIO_META_TOOLS, fallbackComposioOpenAITools } from "../server/composio.ts";
-import { GrokDriver, GROK_DEFAULT_MODEL } from "../server/drivers/grok.ts";
-import { configStatus, instanceConfigs } from "../server/config.ts";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
-const fixtureValue = ["fixture", "value"].join("-");
-const configured = configStatus({ e2b: { apiKey: fixtureValue }, cohere: { apiKey: fixtureValue } });
-assert.equal(configured.e2b.configured, true);
-assert.equal(configured.cohere.configured, true);
-assert.equal(configStatus({}).cohere.configured, false);
-const configuredInstances = instanceConfigs({
-  e2b: { apiKey: fixtureValue },
-  cohere: { apiKey: fixtureValue },
-  instances: { test: { driver: "codex" } },
-});
-assert.equal(configuredInstances.test.environment?.E2B_API_KEY, fixtureValue);
-assert.equal(configuredInstances.test.environment?.COHERE_API_KEY, fixtureValue);
+const root = join(import.meta.dirname, "..");
 
-const linuxEnv = electronEnv({ PATH: "/usr/bin" }, "linux");
-assert.equal(linuxEnv.ELECTRON_DISABLE_SANDBOX, "1");
-assert.equal(linuxEnv.ELECTRON_DISABLE_GPU, "1");
-assert.deepEqual(electronArgs(linuxEnv, "linux"), [".", "--no-sandbox", "--disable-gpu"]);
+// 1. Installer parses.
+execFileSync("bash", ["-n", join(root, "installer/install-ceo-pi.sh")], { stdio: "pipe" });
 
-const macEnv = electronEnv({ PATH: "/usr/bin" }, "darwin");
-assert.equal(macEnv.ELECTRON_DISABLE_SANDBOX, undefined);
-assert.deepEqual(electronArgs(macEnv, "darwin"), ["."]);
+// 2. No chat-app remnants are tracked.
+for (const gone of ["src", "server", "electron", "dist-server", "index.html", "vite.config.ts"]) {
+  assert.equal(existsSync(join(root, gone)), false, `chat-app remnant: ${gone}`);
+}
 
-const launch22 = serverLaunch("22.14.0", "/tmp/does-not-exist.js");
-assert.deepEqual(launch22.args, ["--experimental-strip-types", "server/index.ts"]);
-const launch20 = serverLaunch("20.19.0", "/workspace/dist-server/index.js");
-assert.deepEqual(launch20, { command: "pnpm", args: ["dev:server"] });
+// 3. The skill pack ships flat, one level deep, with SKILL.md frontmatter.
+const skillsRoot = join(root, "skills");
+const skills = readdirSync(skillsRoot, { withFileTypes: true }).filter(d => d.isDirectory());
+assert.ok(skills.length >= 7, `expected >= 7 skills, found ${skills.length}`);
+for (const dir of skills) {
+  const md = readFileSync(join(skillsRoot, dir.name, "SKILL.md"), "utf8");
+  assert.ok(md.startsWith("---"), `${dir.name}/SKILL.md missing frontmatter`);
+  assert.match(md, /^name:\s*\S+/m, `${dir.name}/SKILL.md missing name`);
+  assert.match(md, /^description:/m, `${dir.name}/SKILL.md missing description`);
+  // Nested dirs load nothing in the harness loader: guard the regression.
+  assert.equal(existsSync(join(skillsRoot, dir.name, dir.name)), false, `${dir.name} nests itself`);
+}
 
-const names = fallbackComposioOpenAITools().map((t) => t.function.name);
-for (const name of COMPOSIO_META_TOOLS) assert.ok(names.includes(name), name);
+// 4. Docs the README points at exist.
+for (const doc of ["docs/ceo-pi-setup.md", "docs/pi-out-of-box-setup.md"]) {
+  assert.ok(existsSync(join(root, doc)), `missing ${doc}`);
+}
 
-const acc = new Map();
-accumulateToolCallDelta(acc, [
-  { index: 0, id: "call_1", function: { name: "COMPOSIO_SEARCH_TOOLS", arguments: "{\"q" } },
-  { index: 0, function: { arguments: "ueries\":[]}" } },
-]);
-assert.equal(acc.get(0)?.function.name, "COMPOSIO_SEARCH_TOOLS");
-assert.equal(acc.get(0)?.function.arguments, '{"queries":[]}');
-assert.equal(normalizeToolCalls([{ id: "x", function: { name: "T", arguments: "{}" } }])[0].function.name, "T");
-
-const calls = [];
-let hits = 0;
-const server = createServer((req, res) => {
-  hits += 1;
-  let raw = "";
-  req.on("data", (c) => {
-    raw += c;
-  });
-  req.on("end", () => {
-    const body = JSON.parse(raw || "{}");
-    res.setHeader("content-type", "application/json");
-    if (hits === 1) {
-      assert.ok(Array.isArray(body.tools) && body.tools.length >= 7, "first call must send Composio tools");
-      assert.equal(body.tool_choice, "auto");
-      const sys = body.messages.find((m) => m.role === "system")?.content ?? "";
-      assert.match(sys, /Never claim you lack access/i);
-      res.end(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: null,
-                tool_calls: [
-                  {
-                    id: "call_search",
-                    type: "function",
-                    function: {
-                      name: "COMPOSIO_SEARCH_TOOLS",
-                      arguments: JSON.stringify({ queries: [{ use_case: "list Google Drive files" }] }),
-                    },
-                  },
-                ],
-              },
-            },
-          ],
-        }),
-      );
-      return;
-    }
-    const toolMsg = body.messages.find((m) => m.role === "tool" && m.tool_call_id === "call_search");
-    assert.ok(toolMsg, "second call must include the tool result");
-    res.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: "Found 2 Drive files." } }] }));
-  });
-});
-
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const port = server.address().port;
-const events = [];
-const { text } = await runOpenAITurn({
-  url: `http://127.0.0.1:${port}/chat/completions`,
-  apiKey: "test",
-  model: "zai-org/GLM-4.6",
-  messages: [{ role: "user", content: "List my Google Drive files" }],
-  composio: { key: "ck_test" },
-  errorPrefix: "test",
-  listTools: async () => fallbackComposioOpenAITools(),
-  executeTool: async (name, args) => {
-    calls.push({ name, args });
-    return { tools: [{ tool_slug: "GOOGLEDRIVE_LIST_FILES" }] };
-  },
-  onToolStart: (id, name) => events.push({ type: "start", id, name }),
-  onToolDone: (id, ok) => events.push({ type: "done", id, ok }),
-});
-server.close();
-
-assert.equal(text, "Found 2 Drive files.");
-assert.equal(calls[0]?.name, "COMPOSIO_SEARCH_TOOLS");
-assert.deepEqual(events, [
-  { type: "start", id: "call_search", name: "COMPOSIO_SEARCH_TOOLS" },
-  { type: "done", id: "call_search", ok: true },
-]);
-
-const waiter = createServer((_req, res) => {
-  res.writeHead(200);
-  res.end("ok");
-});
-await new Promise((resolve) => waiter.listen(0, "127.0.0.1", resolve));
-const wport = waiter.address().port;
-assert.equal(await waitForHttp(`http://127.0.0.1:${wport}/`, { timeoutMs: 2_000 }), true);
-waiter.close();
-
-assert.equal(GROK_DEFAULT_MODEL, "grok-4.6");
-assert.equal(GrokDriver.models.default, "grok-4.6");
-assert.ok(
-  GrokDriver.models.options.some((option) => option.id === "grok-4.6"),
-  "Grok picker must include grok-4.6",
-);
-const grokSrc = readFileSync(new URL("../server/drivers/grok.ts", import.meta.url), "utf8");
-assert.match(grokSrc, /generateText:[\s\S]*GROK_DEFAULT_MODEL/);
-assert.doesNotMatch(grokSrc, /generateText:[\s\S]*"grok-3-mini"/);
-
-console.log("verify: start helper + Composio tool loop + Grok 4.6 catalog OK");
+const names = skills.map(s => s.name).sort();
+console.log(`verify: installer syntax + ${names.length} flat skills (${names.join(", ")}) + docs OK`);
