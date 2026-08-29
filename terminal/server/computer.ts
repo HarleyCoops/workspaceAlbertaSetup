@@ -8,7 +8,10 @@ Agents read and write here only after you approve destructive or external work.
 `;
 
 export class LocalComputer {
-  constructor(readonly cwd: string) {
+  cwd: string;
+
+  constructor(cwd: string) {
+    this.cwd = cwd;
     mkdirSync(cwd, { recursive: true });
     const readme = join(cwd, "README.txt");
     try {

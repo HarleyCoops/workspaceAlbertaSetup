@@ -28,10 +28,13 @@ export class McpHttpClient {
   private sessionId: string | null = null;
   private initialized = false;
 
-  constructor(
-    readonly url: string,
-    readonly clientName = "workspacealberta-terminal",
-  ) {}
+  url: string;
+  clientName: string;
+
+  constructor(url: string, clientName = "workspacealberta-terminal") {
+    this.url = url;
+    this.clientName = clientName;
+  }
 
   private async rpc(method: string, params: Record<string, unknown> = {}, timeoutMs = 20_000) {
     const headers: Record<string, string> = {
