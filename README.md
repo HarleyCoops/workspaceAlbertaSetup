@@ -85,6 +85,21 @@ contacts, watch them work, approve what matters.
 
 ---
 
+## Two tracks, one repo
+
+**Primary track — desk terminals.** The CEO productivity terminal: the DSH harness
+([workspacealberta-harness](https://github.com/HarleyCoops/workspacealberta-harness), the
+`workspace-alberta` branch) plus this setup repo. Desktop devices, Canadian model route,
+industrial work through CanadaBuys.
+
+**Experimental track — handheld companion.** [`firmware/companion`](firmware/companion) and
+[`docs/handheld-companion.md`](docs/handheld-companion.md) are a separate, clearly-bounded
+experiment in a handheld form factor. It does not ship with the desk terminal, is not part of
+the procurement product, and is tracked here only so hardware work stays versioned. Do not read
+it as a change in positioning: the product is the desk.
+
+---
+
 ## Quick Start: Pi Terminal Setup
 
 **New to Raspberry Pi?** Follow the complete guide: [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md)
