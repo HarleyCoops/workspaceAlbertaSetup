@@ -82,6 +82,21 @@ This installs:
 - **OpenCode / OpenCode2** for MCP agent workflows
 - **WorkspaceAlberta chat app** (from releases, or `pnpm start` from this repo)
 - **1Password** (optional) for credential management
+- **WorkspaceAlberta Pro subscriber key** (prompted for, or pass `WA_API_KEY=wa_live_...`)
+
+The subscriber key is what makes a terminal billable. The hosted procurement
+endpoint gates bid rooms, Cohere tender review, the watchlist, and bid/no-bid
+scorecards on an `Authorization: Bearer wa_live_...` header — without a key the
+terminal reaches the free tier only. The installer verifies the key against the
+server before writing it, so a bad key fails during staging rather than at the
+customer's desk. Set or rotate it later with:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HarleyCoops/WorkspaceAlberta/main/installer/configure-subscriber-key.sh \
+  | WA_API_KEY=wa_live_... bash
+```
+
+Pass `CONFIGURE_WA_KEY=0` to skip the step entirely.
 
 First-boot details that the 2026-08-14/15 unbox was missing (27W PSU, `/usr/bin/node`, `dsh web` on `127.0.0.1:3080`, dedicated Windows SSH key) live in [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md).
 

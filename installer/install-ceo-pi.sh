@@ -38,6 +38,7 @@ INSTALL_NODE="${INSTALL_NODE:-1}"
 INSTALL_DSH="${INSTALL_DSH:-1}"
 INSTALL_WA_CHAT_APP="${INSTALL_WA_CHAT_APP:-1}"
 INSTALL_HERMES_APPLIANCE="${INSTALL_HERMES_APPLIANCE:-0}"
+CONFIGURE_WA_KEY="${CONFIGURE_WA_KEY:-1}"
 INSTALL_OPENCODE2_LAYOUT="${INSTALL_OPENCODE2_LAYOUT:-1}"
 CLONE_REPO="${CLONE_REPO:-1}"
 SKIP_APT_UPGRADE="${SKIP_APT_UPGRADE:-0}"
@@ -606,6 +607,36 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+# WorkspaceAlberta subscriber key
+# A leased terminal without a key reaches the free tier only: the hosted MCP
+# endpoint gates bid rooms, Cohere tender review, the watchlist, and bid/no-bid
+# scorecards on an `Authorization: Bearer wa_live_...` header. The canonical
+# provisioning script lives in the WorkspaceAlberta repo; use the local clone
+# when present, otherwise fetch it rather than duplicating it here.
+# -----------------------------------------------------------------------------
+WA_KEY_SCRIPT_URL="https://raw.githubusercontent.com/HarleyCoops/WorkspaceAlberta/main/installer/configure-subscriber-key.sh"
+
+if [ "$CONFIGURE_WA_KEY" = "1" ] && { [ -n "${WA_API_KEY:-}" ] || [ -t 0 ]; }; then
+  log "Configuring WorkspaceAlberta subscriber key"
+  wa_key_script="$HOME/WorkspaceAlberta/installer/configure-subscriber-key.sh"
+  if [ ! -f "$wa_key_script" ]; then
+    wa_key_script="$(mktemp)"
+    if ! curl -fsSL -o "$wa_key_script" "$WA_KEY_SCRIPT_URL"; then
+      warn "Could not fetch the key provisioning script; skipping."
+      rm -f "$wa_key_script"
+      wa_key_script=""
+    fi
+  fi
+  if [ -n "$wa_key_script" ]; then
+    bash "$wa_key_script" || warn "Subscriber key not configured; re-run later."
+  fi
+else
+  log "Skipping WorkspaceAlberta subscriber key setup"
+  log "Run it later with:"
+  log "  curl -fsSL $WA_KEY_SCRIPT_URL | WA_API_KEY=wa_live_... bash"
+fi
+
+# -----------------------------------------------------------------------------
 # Summary and next steps
 # -----------------------------------------------------------------------------
 log "Installation complete"
@@ -842,5 +873,15 @@ echo "   git clone https://github.com/HarleyCoops/WorkspaceAlberta.git ~/Workspa
 echo "   cd ~/WorkspaceAlberta"
 echo "   python -m pip install -r requirements.txt"
 echo "   python -m unittest tests.test_canadabuys_mcp_smoke"
+echo ""
+echo "10. WorkspaceAlberta Pro key (required for bid rooms, tender review,"
+echo "    watchlist, and scorecards on a leased terminal):"
+if [ -f "$HOME/.config/workspacealberta/credentials" ]; then
+  echo "    Configured: ~/.config/workspacealberta/credentials"
+  echo "    Rotate with: bash ~/WorkspaceAlberta/installer/configure-subscriber-key.sh"
+else
+  echo "    NOT configured — this terminal is on the free tier."
+  echo "    curl -fsSL $WA_KEY_SCRIPT_URL | WA_API_KEY=wa_live_... bash"
+fi
 echo ""
 echo "============================================================"
