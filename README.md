@@ -2,16 +2,17 @@
 
 # WorkspaceAlberta
 
-**Setup + Linux/Pi chat app for CEO productivity terminals**
+**Subscriber terminal — the same dedicated AI workspace on every desk**
 
-A team of AI bots in a messaging interface. The tool mesh (Gmail, Drive, Slack, GitHub)
-runs through Claude Code or Codex CLI, matching upstream OpenMausBot. Hugging Face is
-optional inference. Built for Raspberry Pi desk terminals and Linux workstations.
+Subscribers pay Warre & Vavasour (Christian Cooper) to turn business plans into
+actual products, systems, or tools. The product they sit in is **WorkspaceAlberta Terminal**:
+persistent teammates, a local computer, MCP connectors, and an approval gate.
+
+The CanadaBuys MCP in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta)
+(`https://elbowsupknivesout.warreandvavasour.com/mcp`) is a **showcase connector**, not the SKU.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Electron](https://img.shields.io/badge/Electron-Linux%20%7C%20macOS-2B2E3A?logo=electron&logoColor=9FEAF9)
-![HuggingFace](https://img.shields.io/badge/Hugging%20Face-Open%20Source-FFD21E?logo=huggingface&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-38d591)
 
 </div>
@@ -43,45 +44,96 @@ optional inference. Built for Raspberry Pi desk terminals and Linux workstations
 
 ---
 
+## Subscriber terminal (the SKU)
+
+Every subscriber gets this same shell. Source lives in [`terminal/`](terminal/) so it does not collide
+with the leftover OpenMausBot-derived Electron chat.
+
+```sh
+git clone https://github.com/HarleyCoops/workspaceAlbertaSetup.git
+cd workspaceAlbertaSetup
+pnpm install
+pnpm terminal
+```
+
+Then open **`http://127.0.0.1:5299`**.
+
+| Process | Bind | Notes |
+|---------|------|-------|
+| Terminal harness | `127.0.0.1:8899` | Teammates, MCP, local computer, approvals |
+| Terminal UI | `127.0.0.1:5299` | The subscriber surface |
+
+```sh
+pnpm terminal:smoke    # create teammate, send a message, list showcase MCP, approval gate
+pnpm terminal:server   # harness only
+pnpm terminal:ui       # Vite only
+```
+
+Full subscriber notes: [`terminal/README.md`](terminal/README.md).
+
+**Smoke path in the UI**
+
+1. Open or create a teammate in the sidebar (Operator / Procurement / Builder are seeded).
+2. Send a message.
+3. Ask to **list the showcase MCP**, or click **List tools** on the WorkspaceAlberta connector.
+4. Ask to **show approval gate** or **run echo hello** — Allow / Deny the card before the computer or an external MCP call runs.
+
+**Add the WorkspaceAlberta MCP URL**
+
+The showcase connector is already attached. To add it (or another Streamable HTTP MCP) yourself:
+Connectors inspector → paste `https://elbowsupknivesout.warreandvavasour.com/mcp` → Add and attach.
+
+**How a subscriber sees the same shell**
+
+The seed teammates, inspector (role / memory / tools / computer / connectors), and approval gate
+are identical on every desk. W&V work is what happens *through* that shared terminal — not a
+custom chat app per subscriber, and not the MCP endpoint as the product.
+
+This repo currently has **zero GitHub Releases**. There is no `.deb` to download. Run from source.
+
+---
+
 ## Start Here
 
-This repository is the **setup home** for WorkspaceAlberta CEO productivity terminals:
+This repository is also the **setup home** for WorkspaceAlberta CEO desks (Pi installer, leftover
+chat, companion firmware). Those are not the subscriber SKU.
 
 | What | Where |
 |------|-------|
+| **Subscriber terminal (SKU)** | [`terminal/`](terminal/) — `pnpm terminal` |
 | **Pi first-boot installer** | [`installer/install-ceo-pi.sh`](installer/install-ceo-pi.sh) |
 | **Beginner's Pi guide** | [`docs/pi-out-of-box-setup.md`](docs/pi-out-of-box-setup.md) |
 | **Installer reference** | [`docs/ceo-pi-setup.md`](docs/ceo-pi-setup.md) |
 | **Remote support runbook** | [`docs/tailscale-pi-remote-support.md`](docs/tailscale-pi-remote-support.md) |
 | **Litter mobile support** | [`docs/litter-remote-support.md`](docs/litter-remote-support.md) |
 | **Handheld companion** | [`docs/handheld-companion.md`](docs/handheld-companion.md) (full spec) · V2 experiment: [`firmware/companion/README.md`](firmware/companion/README.md) |
-| **Linux chat app source** | This repo (React + Electron) |
-| **Chat / harness UI reference** | [`docs/ui-resources.md`](docs/ui-resources.md) |
+| **Leftover OpenMausBot chat** | `src/` + `electron/` + `server/` on `:5199` / `:8799` — **not the SKU** |
+| **Leftover chat UI reference** | [`docs/ui-resources.md`](docs/ui-resources.md) |
 
-**Related:** The procurement MCP product (CanadaBuys agents, Hermes appliance) lives in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta).
+**Related:** The procurement MCP **showcase** (CanadaBuys / Alberta agents) lives in [`HarleyCoops/WorkspaceAlberta`](https://github.com/HarleyCoops/WorkspaceAlberta). Do not treat that MCP as the product.
 
 ---
 
 ## What is WorkspaceAlberta?
 
-WorkspaceAlberta is a **Telegram-style chat app where every contact is an AI agent**. Each bot in your
-sidebar has its own personality, model, and optional cloud computer. Talk to them like messaging
-contacts, watch them work, approve what matters.
+WorkspaceAlberta is the **subscriber terminal**: a team of named AI teammates, a local computer
+they can use, MCP connectors, and approvals before destructive or external work. Every subscriber
+gets the same sleek dedicated workspace. Warre & Vavasour is paid to turn a business plan into a
+working product, system, or tool inside that shell.
 
-> **Naming note:** The *product* users interact with is called **WorkspaceAlberta**. This repository
-> (`workspaceAlbertaSetup`) contains the setup, packaging, and build infrastructure for the app.
+> **Naming note:** The *product* is **WorkspaceAlberta**. This repository (`workspaceAlbertaSetup`)
+> hosts the subscriber terminal plus desk setup. Official DeepSeek Harness (`dsh web` on
+> `127.0.0.1:3080`) is a separate installed CLI — do not bounce or replace it. Raspberry Pi / DSH
+> internals belong to RaspberryPiBot, not this track.
 
-**Key differences from other AI chat apps:**
+**What the terminal is (and is not):**
 
-- **CLI engines for tools** — Composio Connect is injected as MCP into Claude Code and Codex CLI
-  (same as upstream OpenMausBot). Install one of those CLIs for Gmail / Drive / Slack / GitHub.
-  Hugging Face (GLM, Llama, Qwen, …) is optional text inference, not the default brain.
-- **Linux-first** — Primary target is Raspberry Pi 5 16GB desk terminals and Linux workstations.
-  macOS support included but secondary.
-- **Local harness** — One small server on `127.0.0.1` runs all agent processes. Your transcripts,
-  keys, and events stay in `~/.config/workspacealberta`, not a cloud.
-- **Multiple bots** — Not one assistant, but a team: create bots for different roles, each with
-  their own model and personality.
+- **MCP connectors** — start with the WorkspaceAlberta showcase URL. Do not invent a second tool mesh.
+- **Linux / Pi first** — run the web shell on Raspberry Pi 5 desks and Linux workstations.
+- **Local harness** — `127.0.0.1:8899` owns teammates, transcripts, and the computer workspace under
+  `~/.config/workspacealberta/terminal`.
+- **Not the leftover chat** — the OpenMausBot-derived Electron app (`pnpm start`) stays in the tree
+  but is not what subscribers buy.
 
 ---
 
@@ -118,7 +170,7 @@ This installs:
 - **Node.js 22** (NodeSource) and **DeepSeek Harness** (`@deepseek-ai/dsh`)
 - **Codex CLI + Claude Code + ChatGPT Desktop** (Linux arm64 `.deb`) for AI-assisted work
 - **OpenCode / OpenCode2** for MCP agent workflows
-- **WorkspaceAlberta chat app** (from releases, or `pnpm start` from this repo)
+- **WorkspaceAlberta Terminal** from this repo: `pnpm terminal` (subscriber SKU). The leftover Electron chat is `pnpm start` if you still need it.
 - **1Password** (optional) for credential management
 - **WorkspaceAlberta Pro subscriber key** (prompted for, or pass `WA_API_KEY=wa_live_...`)
 
@@ -140,42 +192,15 @@ First-boot details that the 2026-08-14/15 unbox was missing (27W PSU, `/usr/bin/
 
 ---
 
-## Quick Start: Install the Chat App
+## Leftover OpenMausBot chat (not the SKU)
 
-### On Raspberry Pi / Ubuntu Desktop
+The Telegram-style Electron app in `src/`, `electron/`, and `server/` is leftover OpenMausBot
+infrastructure. It remains runnable. It is **not** the subscriber terminal.
 
-**1. Download the `.deb` package:**
+There are **no GitHub Releases** and no installable `.deb` in this repo today. Do not wget a
+fictional `workspacealberta_*.deb`.
 
-```sh
-# For Raspberry Pi 5 (arm64)
-wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_arm64.deb
-
-# For x64 Linux
-wget https://github.com/HarleyCoops/workspaceAlbertaSetup/releases/latest/download/workspacealberta_amd64.deb
-```
-
-**2. Install:**
-
-```sh
-sudo dpkg -i workspacealberta_*.deb
-sudo apt-get install -f  # Fix any missing dependencies
-```
-
-**3. Launch WorkspaceAlberta** from your applications menu.
-
-**4. Install a CLI engine (required for the tool mesh):**
-
-```sh
-npm i -g @anthropic-ai/claude-code   # default — run `claude` once to sign in
-# or
-npm i -g @openai/codex
-```
-
-New bots prefer Claude, then Codex, then Hugging Face. Paste a Composio Connect key (`ck_…`) in App Settings — Claude/Codex receive it as MCP. Hugging Face is optional (GLM 4.6 and other router models).
-
-### From Source (Linux / Raspberry Pi)
-
-No packaged `.deb` required. From a clone:
+### From Source (leftover chat only)
 
 ```sh
 git clone https://github.com/HarleyCoops/workspaceAlbertaSetup && cd workspaceAlbertaSetup
@@ -183,7 +208,8 @@ pnpm install
 pnpm start
 ```
 
-`pnpm start` launches the harness server, Vite (`127.0.0.1:5199`), and Electron together. It waits for Vite (and the server) before opening the window — a black Electron window usually means Vite is not up yet.
+`pnpm start` launches the leftover harness (`127.0.0.1:8799`), Vite (`127.0.0.1:5199`), and Electron.
+That is a different surface from `pnpm terminal`. A black Electron window usually means Vite is not up yet.
 
 On Linux/Pi the start path sets `ELECTRON_DISABLE_SANDBOX=1` and passes `--no-sandbox` (chrome-sandbox SUID errors). It also sets `ELECTRON_DISABLE_GPU=1` as a GPU fallback; unset that env var if your desktop GPU works.
 
@@ -221,9 +247,11 @@ pnpm package:mac
 
 ---
 
-## Configuration
+## Leftover chat configuration
 
-### Claude / Codex (default — required for the tool mesh)
+These keys belong to the leftover OpenMausBot Electron app, not the subscriber terminal.
+
+### Claude / Codex (default — required for the leftover tool mesh)
 
 Upstream OpenMausBot has no Hugging Face driver. Tools are a property of CLI/ACP engines:
 Composio Connect is passed to Claude and Codex as streamable HTTP MCP
@@ -290,9 +318,9 @@ Paste credentials in **App Settings** to unlock additional features:
 
 ---
 
-## Architecture
+## Leftover chat architecture (not the SKU)
 
-WorkspaceAlberta is two processes:
+The subscriber terminal architecture is in [`terminal/README.md`](terminal/README.md) (UI `:5299`, harness `:8899`). The leftover OpenMausBot chat is still two processes:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -383,6 +411,6 @@ MCP into Claude Code / Codex CLI). The [WorkspaceAlberta harness](https://github
 
 <div align="center">
 
-**WorkspaceAlberta** — AI bots for operators. Tool mesh via Claude or Codex CLI.
+**WorkspaceAlberta Terminal** — the subscriber shell. MCP is a showcase connector.
 
 </div>

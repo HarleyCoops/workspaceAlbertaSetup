@@ -28,7 +28,12 @@
     "package:mac": "pnpm build && pnpm build:server && pnpm build:speech && pnpm build:perm && electron-builder --mac --publish never",
     "package:linux": "pnpm build && pnpm build:server && electron-builder --linux --publish never",
     "package:linux:arm64": "pnpm build && pnpm build:server && electron-builder --linux --arm64 --publish never",
-    "package:pi": "pnpm build && pnpm build:server && electron-builder --linux deb --arm64 --publish never"
+    "package:pi": "pnpm build && pnpm build:server && electron-builder --linux deb --arm64 --publish never",
+    "terminal": "node terminal/scripts/start.mjs",
+    "terminal:ui": "vite --config terminal/vite.config.ts",
+    "terminal:server": "node --experimental-strip-types terminal/server/index.ts",
+    "terminal:smoke": "node terminal/scripts/smoke.mjs",
+    "terminal:typecheck": "tsc -p terminal/tsconfig.json --noEmit && tsc -p terminal/tsconfig.server.json --noEmit"
   },
   "dependencies": {
     "@trycua/cua-driver": "^0.19.3",
