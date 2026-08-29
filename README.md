@@ -14,7 +14,30 @@ optional inference. Built for Raspberry Pi desk terminals and Linux workstations
 ![HuggingFace](https://img.shields.io/badge/Hugging%20Face-Open%20Source-FFD21E?logo=huggingface&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-38d591)
 
-<br>
+</div>
+
+## The terminal in pictures
+
+<div align="center">
+
+<a href="docs/screenshots/hero.png">
+  <img src="docs/screenshots/hero.png" width="88%" alt="WorkspaceAlberta terminal hero">
+</a>
+
+<table>
+  <tr>
+    <td width="33%" align="center"><a href="docs/screenshots/marketplace.png"><img src="docs/screenshots/marketplace.png" width="100%" alt="Bot marketplace"></a></td>
+    <td width="33%" align="center"><a href="docs/screenshots/model-picker.png"><img src="docs/screenshots/model-picker.png" width="100%" alt="Model picker"></a></td>
+    <td width="33%" align="center"><a href="docs/screenshots/approval-card.png"><img src="docs/screenshots/approval-card.png" width="100%" alt="Approval card"></a></td>
+  </tr>
+  <tr>
+    <td width="33%" align="center"><a href="docs/screenshots/computer-panel.png"><img src="docs/screenshots/computer-panel.png" width="100%" alt="Computer use panel"></a></td>
+    <td width="33%" align="center"><a href="docs/screenshots/context-menu.png"><img src="docs/screenshots/context-menu.png" width="100%" alt="Context menu"></a></td>
+    <td width="33%" align="center"><a href="docs/screenshots/app-settings.png"><img src="docs/screenshots/app-settings.png" width="100%" alt="App settings"></a></td>
+  </tr>
+</table>
+
+*Hero conversation, marketplace, model picker, approval cards, computer use, context menu, and settings — the surfaces your bots work from.*
 
 </div>
 
