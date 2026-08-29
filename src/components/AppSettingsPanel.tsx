@@ -70,7 +70,12 @@ export function AppSettingsPanel() {
               label="Composio API key (optional)"
               placeholder="ak_…  unlocks the full app catalog"
             />
-            <ApiKeyRow section="e2b" label="e2b API key" placeholder="e2b_…  for cloud sandboxes" />
+            <ApiKeyRow section="e2b" label="e2b API key" placeholder="e2b_…  isolated bid-room processing" />
+            <ApiKeyRow
+              section="cohere"
+              label="Cohere API key"
+              placeholder="Cohere key for Command A+ bid review"
+            />
           </div>
         </div>
 

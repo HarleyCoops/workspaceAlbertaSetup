@@ -8,6 +8,20 @@ import { electronArgs, electronEnv, serverLaunch, waitForHttp } from "./start-de
 import { accumulateToolCallDelta, normalizeToolCalls, runOpenAITurn } from "../server/drivers/openaiCompat.ts";
 import { COMPOSIO_META_TOOLS, fallbackComposioOpenAITools } from "../server/composio.ts";
 import { GrokDriver, GROK_DEFAULT_MODEL } from "../server/drivers/grok.ts";
+import { configStatus, instanceConfigs } from "../server/config.ts";
+
+const fixtureValue = ["fixture", "value"].join("-");
+const configured = configStatus({ e2b: { apiKey: fixtureValue }, cohere: { apiKey: fixtureValue } });
+assert.equal(configured.e2b.configured, true);
+assert.equal(configured.cohere.configured, true);
+assert.equal(configStatus({}).cohere.configured, false);
+const configuredInstances = instanceConfigs({
+  e2b: { apiKey: fixtureValue },
+  cohere: { apiKey: fixtureValue },
+  instances: { test: { driver: "codex" } },
+});
+assert.equal(configuredInstances.test.environment?.E2B_API_KEY, fixtureValue);
+assert.equal(configuredInstances.test.environment?.COHERE_API_KEY, fixtureValue);
 
 const linuxEnv = electronEnv({ PATH: "/usr/bin" }, "linux");
 assert.equal(linuxEnv.ELECTRON_DISABLE_SANDBOX, "1");
@@ -21,7 +35,7 @@ assert.deepEqual(electronArgs(macEnv, "darwin"), ["."]);
 const launch22 = serverLaunch("22.14.0", "/tmp/does-not-exist.js");
 assert.deepEqual(launch22.args, ["--experimental-strip-types", "server/index.ts"]);
 const launch20 = serverLaunch("20.19.0", "/workspace/dist-server/index.js");
-assert.ok(launch20.args[0].endsWith("dist-server/index.js"));
+assert.deepEqual(launch20, { command: "pnpm", args: ["dev:server"] });
 
 const names = fallbackComposioOpenAITools().map((t) => t.function.name);
 for (const name of COMPOSIO_META_TOOLS) assert.ok(names.includes(name), name);

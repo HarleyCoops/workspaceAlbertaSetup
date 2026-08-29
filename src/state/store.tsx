@@ -70,6 +70,7 @@ export interface ConfigStatus {
   deepseek?: { configured: boolean };
   composio: { configured: boolean; apiKeyConfigured?: boolean };
   e2b?: { configured: boolean };
+  cohere?: { configured: boolean };
 }
 
 /** One row of GET /api/instances — the model picker's data. */

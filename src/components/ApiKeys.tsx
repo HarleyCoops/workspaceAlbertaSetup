@@ -6,7 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { api, useStore, type ConfigStatus } from "@/state/store";
 import { cn } from "@/lib/cn";
 
-export type ConfigSection = "hf" | "hfUrl" | "deepseek" | "composio" | "composioApi" | "e2b";
+export type ConfigSection = "hf" | "hfUrl" | "deepseek" | "composio" | "composioApi" | "e2b" | "cohere";
 
 const SECTIONS: Record<
   ConfigSection,
@@ -21,6 +21,7 @@ const SECTIONS: Record<
     flag: (c) => c.composio.apiKeyConfigured ?? false,
   },
   e2b: { body: (v) => ({ e2b: { apiKey: v } }), flag: (c) => c.e2b?.configured ?? false },
+  cohere: { body: (v) => ({ cohere: { apiKey: v } }), flag: (c) => c.cohere?.configured ?? false },
 };
 
 export function ApiKeyRow({

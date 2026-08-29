@@ -8,7 +8,7 @@ import { extname, join } from "node:path";
 
 import * as e2b from "./e2b.ts";
 import * as composio from "./composio.ts";
-import { ensureDirs, instanceConfigs, loadConfig, saveConfig, EVENTS_DIR, NATIVE_DIR } from "./config.ts";
+import { ensureDirs, instanceConfigs, loadConfig, saveConfig, configStatus, EVENTS_DIR, NATIVE_DIR } from "./config.ts";
 import type { RuntimeEvent } from "./contracts.ts";
 
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.ts";
@@ -347,15 +347,6 @@ async function startTurn(botId: string, text: string) {
 }
 
 // ── config hot-reload ─────────────────────────────────────────────────
-function configStatus() {
-  return {
-    hf: { configured: Boolean(cfg.hf?.key) },
-    xai: { configured: Boolean(cfg.xai?.key) },
-    deepseek: { configured: Boolean(cfg.deepseek?.key) },
-    composio: { configured: Boolean(cfg.composio?.key), apiKeyConfigured: Boolean(cfg.composio?.apiKey) },
-    e2b: { configured: Boolean(cfg.e2b?.apiKey) },
-  };
-}
 
 /** Rebuild the provider fleet after a config change so new keys take
  * effect without a server restart (kills any in-flight turns). */
@@ -519,19 +510,19 @@ const server = createServer(async (req, res) => {
 
     // ── app config (API keys — never echoed back, booleans only) ──
     if (method === "GET" && path === "/api/config") {
-      return json(res, 200, configStatus());
+      return json(res, 200, configStatus(cfg));
     }
     if ((method === "PUT" || method === "PATCH") && path === "/api/config") {
       const body = await readBody(req);
       const patch: Record<string, object> = {};
-      for (const key of ["hf", "xai", "deepseek", "composio", "e2b"] as const) {
+      for (const key of ["hf", "xai", "deepseek", "composio", "e2b", "cohere"] as const) {
         if (body[key] && typeof body[key] === "object") patch[key] = body[key];
       }
       if (!Object.keys(patch).length) return json(res, 400, { error: "nothing to save" });
       saveConfig(patch);
       Object.assign(cfg, loadConfig());
       await reloadProviders();
-      const status = configStatus();
+      const status = configStatus(cfg);
       broadcast({ kind: "config", ...status });
       return json(res, 200, status);
     }

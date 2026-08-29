@@ -231,6 +231,43 @@ The layout uses `opencode2` (V2 CLI with managed background service). See `openc
 
 Skip with `INSTALL_OPENCODE2_LAYOUT=0`.
 
+### WorkspaceAlberta agent harness (dsh)
+
+The self-hosted agent harness (`WorkspaceAlberta-Harness`, the branded dsh fork) is cloned to
+`~/Projects/WorkspaceAlberta-Harness` and serves its web UI on `127.0.0.1:3081`. Launch it with:
+
+```bash
+cd ~/Projects/WorkspaceAlberta-Harness
+DSH_TELEMETRY_DISABLED=1 pnpm dsh --profile web --patch workspace-alberta.patch.yml \
+  --host 127.0.0.1 --port 3081 --no-open
+```
+
+**Model provider — Cohere Command A+.** The deployment patch pins the default agent model to
+Cohere (`command-a-plus-05-2026` via `api.cohere.ai/compatibility/v1`), so every Pi needs a
+`COHERE_API_KEY` before the harness can answer. The harness resolves the key through its
+credential layering, in this order:
+
+1. `~/.dsh/.credentials.yaml` — managed store (preferred; `KEY: value` lines, `0600` perms)
+2. `<launch directory>/.env` — the harness repo's `.env` (`COHERE_API_KEY=...`)
+3. `~/.dsh/.env` — home-level fallback
+
+Store the key in all three on a new Pi (the store is authoritative; the `.env` copies make it
+survive regardless of launch directory), then (re)start the harness — credentials are read at
+provider startup, not live.
+
+**Harness-side configuration notes** (these live in the harness repo, so pull latest before
+debugging on a new Pi):
+
+- The `workspace-alberta.patch.yml` deployment overlay disables the DeepSeek adapter, web
+  search, and telemetry, and inserts the `workspace_alberta` MCP server. Composio MCP comes from
+  the `web` profile's own `cordis.patch.yml` — do not add `mcp-composio` to both files (duplicate
+  loader entry ids crash boot).
+- The `tool-web` row is disabled in all three agent presets (`cordis`, `standard`, `code`)
+  because the host `web` service is disabled; otherwise every session fails preset mount with
+  `tool-web waiting for web` and no model call ever runs.
+- The web profile lives at `~/.dsh/profiles/web/` (`cordis.patch.yml` there holds the Linear and
+  Composio MCP clients).
+
 ### Hermes appliance (optional)
 
 Set `INSTALL_HERMES_APPLIANCE=1` to also clone and run the Hermes installer from the separate `HarleyCoops/WorkspaceAlberta` repository. This adds the branded dashboard, procurement MCP agents, local API gateway, and kiosk autostart.
@@ -318,6 +355,12 @@ Vite listens on `127.0.0.1:5199`. Hugging Face / Llama is optional **text-only**
 - Paste your [Hugging Face token](https://huggingface.co/settings/tokens) only if you want HF text inference
 - Paste a Composio Connect key (`ck_…`) after Claude or Codex is signed in
 
+### 5a. Add the Cohere key for the agent harness
+
+Add your Cohere API key (`COHERE_API_KEY`) to the harness credential locations — see
+[WorkspaceAlberta agent harness (dsh)](#workspacealberta-agent-harness-dsh) above for the
+layering and commands. Without it the harness UI works but every message fails silently.
+
 ### 6. Complete Tailscale setup (if no auth key was provided)
 
 ```bash
@@ -366,6 +409,10 @@ systemctl --user is-enabled opencode2-wa wa-terminal-tmux
 
 # WorkspaceAlberta chat app
 dpkg -l | grep workspacealberta
+
+# WorkspaceAlberta agent harness (dsh, if installed)
+grep -q '^COHERE_API_KEY:' ~/.dsh/.credentials.yaml && echo "cohere key present"
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3081/   # expect 200 when running
 ```
 
 ---

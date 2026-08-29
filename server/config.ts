@@ -1,7 +1,7 @@
 // Config + data dirs. One file, ~/.workspacealberta/config.json, env fallbacks:
 //   { "hf": {"key":"hf_…"}, "deepseek": {"key":"sk-…"}, "xai": {"key":"xai-…"}, "composio": {"key":"ck_…"},
 //     "instances": { "<instanceId>": {"driver":"huggingface", …} } }
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, chmodSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
 
@@ -17,6 +17,8 @@ export interface AppConfig {
   composio?: { key?: string; apiKey?: string; url?: string };
   /** e2b sandbox API key — optional, enables cloud sandboxes for bots. */
   e2b?: { apiKey?: string };
+  /** Cohere API key — optional, enables Command A+ bid-room review inside e2b. */
+  cohere?: { apiKey?: string };
   instances?: InstanceConfigMap;
 }
 
@@ -83,6 +85,7 @@ export function loadConfig(): AppConfig {
   };
   cfg.composio = { key: process.env.COMPOSIO_KEY, ...cfg.composio };
   cfg.e2b = { apiKey: process.env.E2B_API_KEY, ...cfg.e2b };
+  cfg.cohere = { apiKey: process.env.COHERE_API_KEY, ...cfg.cohere };
   return cfg;
 }
 
@@ -96,13 +99,29 @@ export function saveConfig(patch: Partial<AppConfig>): void {
   } catch {
     /* first write */
   }
-  for (const key of ["hf", "xai", "deepseek", "composio", "e2b"] as const) {
+  for (const key of ["hf", "xai", "deepseek", "composio", "e2b", "cohere"] as const) {
     if (patch[key] && typeof patch[key] === "object") {
       disk[key] = { ...(disk[key] as object), ...patch[key] };
     }
   }
   mkdirSync(DATA_DIR, { recursive: true });
-  writeFileSync(p, JSON.stringify(disk, null, 2));
+  writeFileSync(p, JSON.stringify(disk, null, 2), { mode: 0o600 });
+  chmodSync(p, 0o600);
+}
+
+/** Return write-only credential status; secret values are never serialized. */
+export function configStatus(cfg: AppConfig) {
+  return {
+    hf: { configured: Boolean(cfg.hf?.key) },
+    xai: { configured: Boolean(cfg.xai?.key) },
+    deepseek: { configured: Boolean(cfg.deepseek?.key) },
+    composio: {
+      configured: Boolean(cfg.composio?.key),
+      apiKeyConfigured: Boolean(cfg.composio?.apiKey),
+    },
+    e2b: { configured: Boolean(cfg.e2b?.apiKey) },
+    cohere: { configured: Boolean(cfg.cohere?.apiKey) },
+  };
 }
 
 // Default fleet matches upstream: Claude/Codex first (tool mesh), then
@@ -128,6 +147,7 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
       ...(cfg.xai?.key ? { XAI_API_KEY: cfg.xai.key } : {}),
       ...(cfg.deepseek?.key ? { DEEPSEEK_API_KEY: cfg.deepseek.key } : {}),
       ...(cfg.e2b?.apiKey ? { E2B_API_KEY: cfg.e2b.apiKey } : {}),
+      ...(cfg.cohere?.apiKey ? { COHERE_API_KEY: cfg.cohere.apiKey } : {}),
       ...entry.environment,
     };
   }

@@ -298,7 +298,7 @@ The driver SPI is intentionally small. Adding a provider:
 | macOS | `~/.workspacealberta/` |
 
 Contents:
-- `config.json` — API keys (write-only, never echoed to UI)
+- `config.json` — API keys (write-only, never echoed to UI, forced to owner-only `0600` permissions)
 - `bots.json` — Bot records and resume cursors
 - `messages-<threadId>.json` — Transcripts per thread
 - `events/` — Raw provider event logs (NDJSON)
@@ -315,7 +315,8 @@ Contents:
 | `DEEPSEEK_BASE_URL` | DeepSeek API base URL | `https://api.deepseek.com` |
 | `WA_PORT` | Server port | `8799` |
 | `WA_ANALYTICS` | Opt-in to telemetry (`1` to enable) | disabled |
-| `E2B_API_KEY` | e2b sandbox API key (optional) | — |
+| `E2B_API_KEY` | e2b sandbox API key for isolated bid-room processing | — |
+| `COHERE_API_KEY` | Cohere API key — Command A+ bid-room review inside e2b, and the default model for the WorkspaceAlberta agent harness (see `docs/ceo-pi-setup.md`) | — |
 | `COMPOSIO_KEY` | Composio Connect key | — |
 | `ELECTRON_DISABLE_GPU` | Set by `pnpm start` on Linux; unset to use GPU | `1` on Linux start |
 
