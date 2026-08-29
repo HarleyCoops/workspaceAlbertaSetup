@@ -338,8 +338,8 @@ deliberately small. See the existing drivers in [`server/drivers/`](server/drive
 When changing the chat or harness UI, treat [Beautiful UI](https://www.beautifului.dev/) as the
 primitive reference — see [`docs/ui-resources.md`](docs/ui-resources.md). Do not rewrite the app,
 do not add a Beautiful UI dependency, and do not replace Composio Connect (the tool mesh stays
-MCP into Claude Code / Codex CLI). The [DeepSeek Harness](https://github.com/HarleyCoops/deepseek-Entire.io)
-uses the same reference so the two surfaces stay visually aligned.
+MCP into Claude Code / Codex CLI). The [WorkspaceAlberta harness](https://github.com/HarleyCoops/workspacealberta-harness)
+(`workspace-alberta` branch) uses the same reference so the two surfaces stay visually aligned.
 
 ---
 

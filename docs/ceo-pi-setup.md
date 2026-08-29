@@ -238,7 +238,7 @@ The self-hosted agent harness — the WorkspaceAlberta-branded dsh fork — is c
 (the deployment layer lives there; upstream `deepseek-ai/deepseek-harness` carries none of it):
 
 ```bash
-git clone -b workspace-alberta https://github.com/HarleyCoops/deepseek-Entire.io.git \
+git clone -b workspace-alberta https://github.com/HarleyCoops/workspacealberta-harness.git \
   ~/Projects/WorkspaceAlberta-Harness
 cd ~/Projects/WorkspaceAlberta-Harness && pnpm install && pnpm build
 ```
