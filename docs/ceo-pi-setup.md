@@ -264,6 +264,19 @@ Store the key in all three on a new Pi (the store is authoritative; the `.env` c
 survive regardless of launch directory), then (re)start the harness — credentials are read at
 provider startup, not live.
 
+**Observability — understanding how an agent reached its answer.** The harness is Cordis
+plugin-based, not LangChain, and needs no external tracing framework for per-step visibility:
+
+- **Trajectory tab** (in-session): swimlane timeline plus a turn-by-turn table — system prompt,
+  context injections, every model request with its reasoning trace, and every tool call with
+  arguments and results.
+- **Session logs** (`~/.dsh/sessions/<workspace>/<session>/session.jsonl.zstd`): the complete
+  wire record (prompts, reasoning, tool I/O) for offline analysis — decompress with `zstdcat`.
+- **OTLP export** (opt-in): the `session-telemetry-otel` plugin ships sessions to any
+  OpenTelemetry-compatible backend. Our launch sets `DSH_TELEMETRY_DISABLED=1` (hard off, keeps
+  transcripts local). To export instead, drop that variable and launch with
+  `DSH_TELEMETRY_MODE=FULL` and `DSH_TELEMETRY_OTLP_URL=<collector endpoint>`.
+
 **Harness-side configuration notes** (these live in the harness repo, so pull latest before
 debugging on a new Pi):
 
