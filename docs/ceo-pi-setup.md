@@ -233,8 +233,17 @@ Skip with `INSTALL_OPENCODE2_LAYOUT=0`.
 
 ### WorkspaceAlberta agent harness (dsh)
 
-The self-hosted agent harness (`WorkspaceAlberta-Harness`, the branded dsh fork) is cloned to
-`~/Projects/WorkspaceAlberta-Harness` and serves its web UI on `127.0.0.1:3081`. Launch it with:
+The self-hosted agent harness — the WorkspaceAlberta-branded dsh fork — is cloned to
+`~/Projects/WorkspaceAlberta-Harness` from the `HarleyCoops` fork, **`workspace-alberta` branch**
+(the deployment layer lives there; upstream `deepseek-ai/deepseek-harness` carries none of it):
+
+```bash
+git clone -b workspace-alberta https://github.com/HarleyCoops/deepseek-Entire.io.git \
+  ~/Projects/WorkspaceAlberta-Harness
+cd ~/Projects/WorkspaceAlberta-Harness && pnpm install && pnpm build
+```
+
+It serves its web UI on `127.0.0.1:3081`. Launch it with:
 
 ```bash
 cd ~/Projects/WorkspaceAlberta-Harness
